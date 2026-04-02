@@ -1,0 +1,12 @@
+{
+  "name": "@origo/core",
+  "version": "1.0.0",
+  "description": "Shared game logic, state, WebSocket client, GHIFR",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "dependencies": {
+    "zustand": "^4.5.0"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+*.local
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+
+# Rust
+engine/target/
+
+# Generated
+packages/web/dist/

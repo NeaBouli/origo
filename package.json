@@ -1,0 +1,25 @@
+{
+  "name": "origo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ORIGO — Persistent Multiplayer Conway Universe",
+  "workspaces": [
+    "packages/*",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w server\" \"npm run dev -w @origo/web\"",
+    "build": "npm run build -w @origo/core && npm run build -w @origo/renderer && npm run build -w @origo/web",
+    "test": "npm run test --workspaces --if-present",
+    "migrate": "node db/migrate.js",
+    "docker:up": "cd infra && docker-compose up -d",
+    "docker:down": "cd infra && docker-compose down"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}
