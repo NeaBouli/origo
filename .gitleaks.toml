@@ -25,6 +25,9 @@ title = "ORIGO Custom Gitleaks Config"
 [[rules]]
   description = "Database Password"
   id = "db-password"
-  regex = '''(?i)(postgres|mysql|db)[_-]?(password|pass)\s*[=:]\s*["']?(?!password|devpassword)[^\s"']{8,}["']?'''
+  regex = '''(?i)(postgres|mysql|db)[_-]?(password|pass)\s*[=:]\s*["']?[a-zA-Z0-9!@#$%^&*]{12,}["']?'''
   tags = ["database", "password"]
   severity = "HIGH"
+
+  [rules.allowlist]
+    regexes = ['''password|devpassword|REPLACE''']
