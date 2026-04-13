@@ -10,5 +10,11 @@ coverage/
 # Rust
 engine/target/
 
+# Certificates & Credentials
+*.pem
+*.key
+credentials.json
+serviceAccountKey.json
+
 # Generated
 packages/web/dist/

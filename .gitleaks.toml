@@ -1,0 +1,30 @@
+title = "ORIGO Custom Gitleaks Config"
+
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''node_modules''',
+    '''\.git''',
+    '''engine/target'''
+  ]
+
+[[rules]]
+  description = "JWT Secret"
+  id = "jwt-secret"
+  regex = '''(?i)(jwt[_-]?secret)\s*[=:]\s*["']?[a-zA-Z0-9_\-]{16,}["']?'''
+  tags = ["secret", "jwt"]
+  severity = "CRITICAL"
+
+[[rules]]
+  description = "Ethereum Private Key"
+  id = "eth-private-key"
+  regex = '''(?i)(0x[0-9a-fA-F]{64})'''
+  tags = ["key", "ethereum"]
+  severity = "CRITICAL"
+
+[[rules]]
+  description = "Database Password"
+  id = "db-password"
+  regex = '''(?i)(postgres|mysql|db)[_-]?(password|pass)\s*[=:]\s*["']?(?!password|devpassword)[^\s"']{8,}["']?'''
+  tags = ["database", "password"]
+  severity = "HIGH"
