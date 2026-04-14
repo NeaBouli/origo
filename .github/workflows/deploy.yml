@@ -1,0 +1,34 @@
+name: Deploy to Hetzner
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install and test
+        run: |
+          npm install
+          npm test --if-present
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.HETZNER_HOST }}
+          username: origo
+          key:      ${{ secrets.HETZNER_SSH_KEY }}
+          script:   /opt/origo/infra/scripts/deploy.sh
+
+      - name: Health check
+        run: |
+          sleep 5
+          curl -f https://origo.app/health
