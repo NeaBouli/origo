@@ -13,7 +13,8 @@
     "test": "npm run test --workspaces --if-present",
     "migrate": "node db/migrate.js",
     "docker:up": "cd infra && docker-compose up -d",
-    "docker:down": "cd infra && docker-compose down"
+    "docker:down": "cd infra && docker-compose down",
+    "seed": "node infra/scripts/dev-seed.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
