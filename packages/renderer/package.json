@@ -1,7 +1,10 @@
 {
   "name": "@origo/renderer",
   "version": "1.0.0",
-  "description": "ORIGO renderer (stub — see BUG-002)",
+  "description": "Shared Three.js renderer — web and mobile",
+  "main": "src/index.js",
   "type": "module",
-  "main": "src/index.js"
+  "dependencies": {
+    "three": "^0.163.0"
+  }
 }

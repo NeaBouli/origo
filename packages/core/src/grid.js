@@ -45,12 +45,7 @@ export function countFactions(grid) {
   return counts;
 }
 
-/**
- * Get fossil alpha for a given decay day.
- */
 export function fossilAlpha(decayDay) {
   if (decayDay >= 30) return 0;
-  if (decayDay >= 20) return 0.05 + (29 - decayDay) * 0.025;
-  if (decayDay >= 10) return 0.3  + (19 - decayDay) * 0.04;
-  return 0.7 + (9 - decayDay) * 0.03;
+  return 1 - (decayDay / 30);
 }
