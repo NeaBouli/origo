@@ -652,26 +652,123 @@ footer{
 </footer>
 
 <script>
-// ── BACKGROUND CONWAY SIMULATION ──────────────────────────────────────────────
+// ── UNIVERSE BACKGROUND (Stars, Nebulae, Galaxies, Planets) + CONWAY ─────────
 (function() {
   const canvas = document.getElementById('bg-canvas');
   const ctx    = canvas.getContext('2d');
   const CELL   = 14;
   let cols, rows, grid, next;
+  let W, H;
+
+  // ── Static star field (multiple layers for parallax depth)
+  const starLayers = [
+    { count: 300, speed: 0.02, sizeMin: 0.3, sizeMax: 1.0, alpha: 0.4, stars: [] },
+    { count: 150, speed: 0.05, sizeMin: 0.8, sizeMax: 1.8, alpha: 0.6, stars: [] },
+    { count: 40,  speed: 0.10, sizeMin: 1.5, sizeMax: 2.8, alpha: 0.9, stars: [] },
+  ];
+
+  // ── Nebula clouds (soft radial gradients drifting slowly)
+  const nebulae = [];
+  function createNebulae() {
+    nebulae.length = 0;
+    const configs = [
+      { color: [201,168,76], x: 0.15, y: 0.25, r: 0.25, a: 0.04 },
+      { color: [42,128,128], x: 0.75, y: 0.15, r: 0.30, a: 0.035 },
+      { color: [138,74,138], x: 0.55, y: 0.70, r: 0.22, a: 0.03 },
+      { color: [58,106,138], x: 0.20, y: 0.80, r: 0.20, a: 0.025 },
+      { color: [201,74,74],  x: 0.85, y: 0.60, r: 0.18, a: 0.02 },
+    ];
+    configs.forEach(c => {
+      nebulae.push({
+        x: c.x * W, y: c.y * H,
+        baseX: c.x, baseY: c.y,
+        r: c.r * Math.max(W, H),
+        color: c.color, alpha: c.a,
+        drift: Math.random() * Math.PI * 2,
+        driftSpeed: 0.0003 + Math.random() * 0.0005,
+        driftRadius: 30 + Math.random() * 50,
+      });
+    });
+  }
+
+  // ── Galaxies (spiral shapes rendered as layered arcs)
+  const galaxies = [];
+  function createGalaxies() {
+    galaxies.length = 0;
+    const configs = [
+      { x: 0.30, y: 0.12, size: 80, color: [201,168,76], arms: 3, rotation: 0 },
+      { x: 0.78, y: 0.40, size: 60, color: [42,128,128], arms: 2, rotation: 1.5 },
+      { x: 0.12, y: 0.55, size: 50, color: [138,74,138], arms: 2, rotation: 3.0 },
+      { x: 0.60, y: 0.88, size: 70, color: [58,138,90],  arms: 3, rotation: 4.5 },
+    ];
+    configs.forEach(c => {
+      galaxies.push({
+        x: c.x * W, y: c.y * H,
+        size: c.size * (W / 1400),
+        color: c.color, arms: c.arms,
+        rotation: c.rotation,
+        rotSpeed: 0.0002 + Math.random() * 0.0003,
+      });
+    });
+  }
+
+  // ── Planets (glowing spheres with atmosphere)
+  const planets = [];
+  function createPlanets() {
+    planets.length = 0;
+    const configs = [
+      { x: 0.88, y: 0.22, r: 28, color: [201,168,76], ring: true,  atmosphere: [201,168,76] },
+      { x: 0.08, y: 0.35, r: 18, color: [42,128,128],  ring: false, atmosphere: [42,180,180] },
+      { x: 0.50, y: 0.05, r: 14, color: [138,74,138],  ring: false, atmosphere: [180,100,180] },
+      { x: 0.35, y: 0.92, r: 22, color: [58,106,138],  ring: true,  atmosphere: [80,140,200] },
+      { x: 0.70, y: 0.65, r: 10, color: [201,74,74],   ring: false, atmosphere: [230,100,100] },
+    ];
+    configs.forEach(c => {
+      const scale = W / 1400;
+      planets.push({
+        x: c.x * W, y: c.y * H,
+        r: c.r * scale,
+        color: c.color, ring: c.ring,
+        atmosphere: c.atmosphere,
+        phase: Math.random() * Math.PI * 2,
+        bobSpeed: 0.002 + Math.random() * 0.003,
+        bobAmp: 3 + Math.random() * 5,
+      });
+    });
+  }
+
+  function initStars() {
+    starLayers.forEach(layer => {
+      layer.stars = [];
+      for (let i = 0; i < layer.count; i++) {
+        layer.stars.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          size: layer.sizeMin + Math.random() * (layer.sizeMax - layer.sizeMin),
+          twinkle: Math.random() * Math.PI * 2,
+          twinkleSpeed: 0.01 + Math.random() * 0.03,
+        });
+      }
+    });
+  }
 
   function resize() {
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    cols = Math.ceil(canvas.width  / CELL);
-    rows = Math.ceil(canvas.height / CELL);
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    cols = Math.ceil(W / CELL);
+    rows = Math.ceil(H / CELL);
     grid = new Uint8Array(cols * rows);
     next = new Uint8Array(cols * rows);
-    // Sparse random seed
     for (let i = 0; i < grid.length; i++) {
       grid[i] = Math.random() < 0.12 ? 1 : 0;
     }
+    initStars();
+    createNebulae();
+    createGalaxies();
+    createPlanets();
   }
 
+  // ── Conway tick
   function tick() {
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
@@ -679,9 +776,7 @@ footer{
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
             if (!dr && !dc) continue;
-            const nr = (r + dr + rows) % rows;
-            const nc = (c + dc + cols) % cols;
-            n += grid[nr * cols + nc];
+            n += grid[((r+dr+rows)%rows) * cols + ((c+dc+cols)%cols)];
           }
         }
         const alive = grid[r * cols + c];
@@ -691,12 +786,140 @@ footer{
     const tmp = grid; grid = next; next = tmp;
   }
 
+  // ── Draw universe + Conway overlay
+  let time = 0;
   function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    time++;
+    ctx.clearRect(0, 0, W, H);
+
+    // 1) Nebulae (deep background glow)
+    nebulae.forEach(n => {
+      n.drift += n.driftSpeed;
+      const nx = n.baseX * W + Math.cos(n.drift) * n.driftRadius;
+      const ny = n.baseY * H + Math.sin(n.drift * 0.7) * n.driftRadius;
+      const grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.r);
+      grad.addColorStop(0, `rgba(${n.color[0]},${n.color[1]},${n.color[2]},${n.alpha})`);
+      grad.addColorStop(0.4, `rgba(${n.color[0]},${n.color[1]},${n.color[2]},${n.alpha * 0.4})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+    });
+
+    // 2) Stars (twinkling)
+    starLayers.forEach(layer => {
+      layer.stars.forEach(s => {
+        s.twinkle += s.twinkleSpeed;
+        const a = layer.alpha * (0.5 + 0.5 * Math.sin(s.twinkle));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(220,230,255,${a})`;
+        ctx.fill();
+        // Bright stars get a subtle cross flare
+        if (s.size > 2) {
+          ctx.strokeStyle = `rgba(220,230,255,${a * 0.3})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath(); ctx.moveTo(s.x - s.size * 3, s.y); ctx.lineTo(s.x + s.size * 3, s.y); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(s.x, s.y - s.size * 3); ctx.lineTo(s.x, s.y + s.size * 3); ctx.stroke();
+        }
+      });
+    });
+
+    // 3) Galaxies (spiral arms)
+    galaxies.forEach(g => {
+      g.rotation += g.rotSpeed;
+      ctx.save();
+      ctx.translate(g.x, g.y);
+      ctx.rotate(g.rotation);
+      // Core glow
+      const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, g.size * 0.4);
+      coreGrad.addColorStop(0, `rgba(${g.color[0]},${g.color[1]},${g.color[2]},0.15)`);
+      coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = coreGrad;
+      ctx.fillRect(-g.size, -g.size, g.size * 2, g.size * 2);
+      // Spiral arms
+      for (let arm = 0; arm < g.arms; arm++) {
+        const armAngle = (arm / g.arms) * Math.PI * 2;
+        ctx.beginPath();
+        for (let t = 0; t < 1; t += 0.01) {
+          const angle = armAngle + t * Math.PI * 2.5;
+          const radius = t * g.size;
+          const x = Math.cos(angle) * radius;
+          const y = Math.sin(angle) * radius;
+          if (t === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = `rgba(${g.color[0]},${g.color[1]},${g.color[2]},${0.08 + 0.04 * Math.sin(time * 0.01)})`;
+        ctx.lineWidth = 2 + g.size * 0.03;
+        ctx.stroke();
+      }
+      // Scatter stars along arms
+      for (let arm = 0; arm < g.arms; arm++) {
+        const armAngle = (arm / g.arms) * Math.PI * 2;
+        for (let i = 0; i < 15; i++) {
+          const t = Math.random();
+          const angle = armAngle + t * Math.PI * 2.5 + (Math.random() - 0.5) * 0.4;
+          const radius = t * g.size + (Math.random() - 0.5) * g.size * 0.15;
+          const sx = Math.cos(angle) * radius;
+          const sy = Math.sin(angle) * radius;
+          const sa = 0.3 + Math.random() * 0.4;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 0.5 + Math.random(), 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${g.color[0]},${g.color[1]},${g.color[2]},${sa})`;
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    });
+
+    // 4) Planets (spheres with atmosphere + optional ring)
+    planets.forEach(p => {
+      p.phase += p.bobSpeed;
+      const py = p.y + Math.sin(p.phase) * p.bobAmp;
+
+      // Atmosphere glow
+      const atmoGrad = ctx.createRadialGradient(p.x, py, p.r * 0.8, p.x, py, p.r * 3);
+      atmoGrad.addColorStop(0, `rgba(${p.atmosphere[0]},${p.atmosphere[1]},${p.atmosphere[2]},0.08)`);
+      atmoGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = atmoGrad;
+      ctx.beginPath(); ctx.arc(p.x, py, p.r * 3, 0, Math.PI * 2); ctx.fill();
+
+      // Ring (behind planet)
+      if (p.ring) {
+        ctx.save();
+        ctx.translate(p.x, py);
+        ctx.scale(1, 0.35);
+        ctx.beginPath(); ctx.arc(0, 0, p.r * 2.2, Math.PI, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},0.15)`;
+        ctx.lineWidth = p.r * 0.15;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Planet body
+      const bodyGrad = ctx.createRadialGradient(p.x - p.r * 0.3, py - p.r * 0.3, p.r * 0.1, p.x, py, p.r);
+      bodyGrad.addColorStop(0, `rgba(${p.color[0]+40},${p.color[1]+40},${p.color[2]+40},0.6)`);
+      bodyGrad.addColorStop(0.7, `rgba(${p.color[0]},${p.color[1]},${p.color[2]},0.4)`);
+      bodyGrad.addColorStop(1, `rgba(${Math.floor(p.color[0]*0.3)},${Math.floor(p.color[1]*0.3)},${Math.floor(p.color[2]*0.3)},0.5)`);
+      ctx.beginPath(); ctx.arc(p.x, py, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = bodyGrad; ctx.fill();
+
+      // Ring (front)
+      if (p.ring) {
+        ctx.save();
+        ctx.translate(p.x, py);
+        ctx.scale(1, 0.35);
+        ctx.beginPath(); ctx.arc(0, 0, p.r * 2.2, 0, Math.PI);
+        ctx.strokeStyle = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},0.12)`;
+        ctx.lineWidth = p.r * 0.15;
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+
+    // 5) Conway cells (on top, semi-transparent)
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (!grid[r * cols + c]) continue;
-        ctx.fillStyle = 'rgba(201,168,76,0.18)';
+        ctx.fillStyle = 'rgba(201,168,76,0.14)';
         ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
       }
     }
