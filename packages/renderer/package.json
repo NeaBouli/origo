@@ -1,0 +1,7 @@
+{
+  "name": "@origo/renderer",
+  "version": "1.0.0",
+  "description": "ORIGO renderer (stub — see BUG-002)",
+  "type": "module",
+  "main": "src/index.js"
+}
