@@ -13,6 +13,9 @@ import { authRouter }     from './api/auth.js';
 import { factionRouter }  from './api/faction.js';
 import { ghifrRouter }    from './api/ghifr.js';
 import { voucherRouter }  from './api/voucher.js';
+import { patternsRouter } from './api/patterns.js';
+import { defaultLimiter } from './middleware/rateLimit.js';
+import { errorHandler }   from './middleware/errorHandler.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -34,8 +37,10 @@ async function main() {
   app.use('/api/auth',    authRouter);
   app.use('/api/faction', factionRouter);
   app.use('/api/ghifr',   ghifrRouter);
-  app.use('/api/voucher', voucherRouter);
+  app.use('/api/voucher',  voucherRouter);
+  app.use('/api/patterns', patternsRouter);
 
+  app.use(defaultLimiter);
   app.get('/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
   const httpServer = createServer(app);
@@ -54,6 +59,9 @@ async function main() {
   startFossilJob();
   startPoolJob(broker);
   console.log('✓ Background jobs started');
+
+  // Error handler — must be last
+  app.use(errorHandler);
 
   httpServer.listen(PORT, () => {
     console.log(`🚀 ORIGO Server live on port ${PORT}`);
