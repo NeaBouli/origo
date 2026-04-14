@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ORIGO — Universal Origin Game</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --void:    #04060E;
+  --deep:    #080C18;
+  --surface: #0C1220;
+  --border:  #1A2640;
+  --gold:    #C9A84C;
+  --amber:   #E8C56A;
+  --stone:   #6A7E99;
+  --offwhite:#D0DCEE;
+  --teal:    #2A8080;
+  --glow:    rgba(201,168,76,0.15);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--void);
+  color:var(--offwhite);
+  font-family:'DM Mono',monospace;
+  overflow-x:hidden;
+  cursor:crosshair;
+}
+
+/* ── CANVAS BG ── */
+#bg-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:0;opacity:0.55;pointer-events:none;
+}
+
+/* ── GRAIN OVERLAY ── */
+body::after{
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity:0.35;
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 40px;
+  background:linear-gradient(to bottom,rgba(4,6,14,0.95),transparent);
+  border-bottom:1px solid rgba(201,168,76,0.08);
+}
+.nav-logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:22px;letter-spacing:6px;color:var(--gold);
+  text-decoration:none;
+}
+.nav-links{display:flex;gap:28px;list-style:none}
+.nav-links a{
+  font-size:10px;letter-spacing:2px;color:var(--stone);
+  text-decoration:none;transition:color 0.2s;text-transform:uppercase;
+}
+.nav-links a:hover{color:var(--gold)}
+.nav-cta{
+  font-size:10px;letter-spacing:2px;color:var(--void);
+  background:var(--gold);padding:8px 18px;text-decoration:none;
+  font-family:'DM Mono',monospace;transition:all 0.2s;
+}
+.nav-cta:hover{background:var(--amber);box-shadow:0 0 20px rgba(201,168,76,0.4)}
+
+/* ── SECTIONS ── */
+section{position:relative;z-index:2}
+
+/* ── HERO ── */
+#hero{
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:120px 40px 80px;
+}
+.hero-eyebrow{
+  font-size:9px;letter-spacing:6px;color:var(--gold);
+  opacity:0;animation:fadeUp 0.8s 0.2s forwards;
+  margin-bottom:20px;
+}
+.hero-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(72px,14vw,160px);
+  line-height:0.9;letter-spacing:8px;
+  color:var(--gold);
+  text-shadow:0 0 80px rgba(201,168,76,0.3);
+  opacity:0;animation:fadeUp 0.8s 0.4s forwards;
+  margin-bottom:24px;
+}
+.hero-sub{
+  font-family:'Crimson Pro',serif;font-style:italic;
+  font-size:clamp(18px,2.5vw,26px);color:var(--stone);
+  max-width:600px;line-height:1.7;
+  opacity:0;animation:fadeUp 0.8s 0.6s forwards;
+  margin-bottom:48px;
+}
+.hero-actions{
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;
+  opacity:0;animation:fadeUp 0.8s 0.8s forwards;
+}
+.btn-primary{
+  background:var(--gold);color:var(--void);
+  padding:14px 32px;font-family:'DM Mono',monospace;
+  font-size:11px;letter-spacing:3px;text-decoration:none;
+  transition:all 0.2s;display:inline-block;
+}
+.btn-primary:hover{background:var(--amber);box-shadow:0 0 30px rgba(201,168,76,0.5);transform:translateY(-2px)}
+.btn-ghost{
+  border:1px solid var(--border);color:var(--stone);
+  padding:14px 32px;font-family:'DM Mono',monospace;
+  font-size:11px;letter-spacing:3px;text-decoration:none;
+  transition:all 0.2s;display:inline-block;
+}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+
+.hero-stats{
+  display:flex;gap:48px;margin-top:60px;
+  opacity:0;animation:fadeUp 0.8s 1s forwards;
+}
+.stat{text-align:center}
+.stat-n{font-family:'Bebas Neue',sans-serif;font-size:36px;color:var(--gold);letter-spacing:2px}
+.stat-l{font-size:8px;letter-spacing:3px;color:var(--stone)}
+
+/* ── LIVE SIM STRIP ── */
+#live-strip{
+  padding:0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  background:var(--deep);overflow:hidden;
+}
+#sim-canvas{display:block;width:100%}
+
+/* ── SECTION GENERIC ── */
+.section-inner{max-width:1100px;margin:0 auto;padding:100px 40px}
+.section-label{
+  font-size:8px;letter-spacing:5px;color:var(--gold);
+  opacity:0.6;margin-bottom:12px;
+}
+.section-title{
+  font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,60px);
+  letter-spacing:3px;color:var(--offwhite);line-height:1;margin-bottom:20px;
+}
+.section-body{
+  font-family:'Crimson Pro',serif;font-size:18px;
+  color:var(--stone);line-height:1.8;max-width:620px;
+}
+
+/* ── HOW IT WORKS ── */
+#how{background:linear-gradient(to bottom,var(--void),var(--deep))}
+.steps{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:2px;margin-top:60px;
+}
+.step{
+  background:var(--surface);padding:32px 28px;
+  border:1px solid var(--border);position:relative;
+  opacity:0;transform:translateY(24px);
+  transition:all 0.6s;
+}
+.step.visible{opacity:1;transform:none}
+.step:hover{border-color:var(--gold);background:rgba(201,168,76,0.05)}
+.step-num{
+  font-family:'Bebas Neue',sans-serif;font-size:52px;
+  color:var(--gold);opacity:0.25;line-height:1;margin-bottom:12px;
+}
+.step-title{font-size:12px;letter-spacing:2px;color:var(--gold);margin-bottom:10px}
+.step-body{font-family:'Crimson Pro',serif;font-size:15px;color:var(--stone);line-height:1.7}
+
+/* ── CONWAY DEMO ── */
+#demo{background:var(--deep);border-top:1px solid var(--border)}
+.demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+@media(max-width:700px){.demo-grid{grid-template-columns:1fr}}
+#demo-canvas{
+  width:100%;aspect-ratio:1;max-width:420px;
+  border:1px solid var(--border);
+  box-shadow:0 0 60px rgba(201,168,76,0.08);
+  cursor:crosshair;
+}
+.demo-info{}
+.demo-label{font-size:8px;letter-spacing:4px;color:var(--gold);margin-bottom:8px}
+.demo-title{font-family:'Bebas Neue',sans-serif;font-size:42px;color:var(--offwhite);letter-spacing:2px;margin-bottom:16px}
+.demo-body{font-family:'Crimson Pro',serif;font-size:16px;color:var(--stone);line-height:1.8;margin-bottom:24px}
+.gen-counter{
+  font-size:11px;letter-spacing:3px;color:var(--gold);
+  border:1px solid var(--border);display:inline-block;padding:6px 14px;
+  margin-bottom:16px;
+}
+.rule-list{list-style:none;margin-bottom:24px}
+.rule-list li{
+  font-size:11px;color:var(--stone);padding:5px 0;
+  border-bottom:1px solid var(--border);letter-spacing:0.5px;
+}
+.rule-list li::before{content:'→ ';color:var(--gold)}
+
+/* ── ECONOMY ── */
+#economy{background:linear-gradient(to bottom,var(--deep),var(--void))}
+.econ-flow{
+  display:flex;flex-direction:column;gap:2px;
+  margin-top:48px;max-width:660px;
+}
+.flow-row{
+  display:grid;grid-template-columns:180px 1fr;
+  background:var(--surface);border:1px solid var(--border);
+  overflow:hidden;
+  opacity:0;transform:translateX(-20px);transition:all 0.5s;
+}
+.flow-row.visible{opacity:1;transform:none}
+.flow-row.highlight{border-color:var(--gold);background:rgba(201,168,76,0.05)}
+.flow-label{
+  background:rgba(201,168,76,0.08);
+  padding:14px 16px;font-size:9px;letter-spacing:2px;
+  color:var(--gold);display:flex;align-items:center;
+  border-right:1px solid var(--border);
+}
+.flow-val{
+  padding:14px 16px;font-size:13px;color:var(--offwhite);
+  display:flex;align-items:center;
+}
+.flywheel{
+  margin-top:60px;
+  display:flex;align-items:center;justify-content:center;
+  flex-wrap:wrap;gap:0;
+}
+.fly-item{
+  background:var(--surface);border:1px solid var(--border);
+  padding:14px 20px;font-size:9px;letter-spacing:2px;
+  color:var(--stone);white-space:nowrap;
+  transition:all 0.3s;
+}
+.fly-item.gold{background:var(--gold);color:var(--void);border-color:var(--gold);font-weight:700}
+.fly-arrow{color:var(--border);padding:0 4px;font-size:14px}
+
+/* ── LAYERS ── */
+#layers{background:var(--void)}
+.layer-cards{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:2px;margin-top:48px;
+}
+.layer-card{
+  background:var(--surface);border:1px solid var(--border);
+  padding:28px 24px;position:relative;overflow:hidden;
+  opacity:0;transform:translateY(20px);transition:all 0.5s;
+}
+.layer-card.visible{opacity:1;transform:none}
+.layer-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  opacity:0;transition:opacity 0.3s;
+}
+.layer-card:hover::before{opacity:1}
+.layer-badge{
+  font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;
+  padding:3px 8px;border:1px solid;display:inline-block;margin-bottom:16px;
+}
+.layer-name{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:8px}
+.layer-rule{font-size:9px;letter-spacing:2px;color:var(--stone);margin-bottom:12px}
+.layer-desc{font-family:'Crimson Pro',serif;font-size:14px;color:var(--stone);line-height:1.7}
+.layer-earn{
+  margin-top:16px;font-size:9px;letter-spacing:1px;
+  padding:6px 10px;border:1px solid var(--border);
+  color:var(--gold);display:inline-block;
+}
+
+/* Layer colors */
+.l0{--lc:#3A8A4A} .l1{--lc:#3A6A8A} .l2{--lc:#8A4A8A} .l3{--lc:#C9A84C}
+.layer-card .layer-badge{color:var(--lc);border-color:var(--lc)}
+.layer-card .layer-name{color:var(--lc)}
+
+/* ── TECH STACK ── */
+#tech{background:var(--deep);border-top:1px solid var(--border)}
+.tech-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:2px;margin-top:48px;
+}
+.tech-item{
+  background:var(--surface);border:1px solid var(--border);
+  padding:24px;opacity:0;transform:scale(0.96);transition:all 0.4s;
+}
+.tech-item.visible{opacity:1;transform:none}
+.tech-icon{font-size:24px;margin-bottom:12px}
+.tech-name{font-size:10px;letter-spacing:3px;color:var(--gold);margin-bottom:6px}
+.tech-desc{font-family:'Crimson Pro',serif;font-size:13px;color:var(--stone);line-height:1.6}
+
+/* ── CTA ── */
+#cta{
+  background:linear-gradient(to bottom,var(--deep),var(--void));
+  text-align:center;border-top:1px solid var(--border);
+}
+.cta-inner{max-width:700px;margin:0 auto;padding:120px 40px}
+.cta-pre{font-size:9px;letter-spacing:5px;color:var(--gold);margin-bottom:20px}
+.cta-title{
+  font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,8vw,90px);
+  letter-spacing:4px;color:var(--offwhite);line-height:0.95;margin-bottom:24px;
+}
+.cta-title span{color:var(--gold)}
+.cta-body{
+  font-family:'Crimson Pro',serif;font-size:18px;color:var(--stone);
+  line-height:1.8;margin-bottom:48px;max-width:500px;margin-left:auto;margin-right:auto;
+}
+.cta-price{
+  font-size:11px;letter-spacing:3px;color:var(--stone);margin-top:16px;
+}
+
+/* ── FOOTER ── */
+footer{
+  border-top:1px solid var(--border);
+  padding:32px 40px;display:flex;justify-content:space-between;
+  align-items:center;flex-wrap:wrap;gap:16px;
+  position:relative;z-index:2;background:var(--void);
+}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:5px;color:var(--gold)}
+.footer-links{display:flex;gap:24px}
+.footer-links a{font-size:9px;letter-spacing:2px;color:var(--stone);text-decoration:none}
+.footer-links a:hover{color:var(--gold)}
+.footer-copy{font-size:9px;letter-spacing:1px;color:rgba(106,126,153,0.5)}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+@keyframes glow-pulse{0%,100%{text-shadow:0 0 40px rgba(201,168,76,0.2)}50%{text-shadow:0 0 80px rgba(201,168,76,0.5)}}
+
+.pulse{animation:pulse 2s infinite}
+
+/* ── LENIA TAG ── */
+.lenia-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid rgba(42,128,128,0.4);
+  background:rgba(42,128,128,0.08);
+  padding:6px 14px;font-size:9px;letter-spacing:2px;color:#4AABAB;
+  margin-left:12px;
+}
+.lenia-dot{width:6px;height:6px;border-radius:50%;background:#4AABAB;animation:pulse 1.5s infinite}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--gold);opacity:0.3}
+</style>
+</head>
+<body>
+
+<!-- ── BACKGROUND CONWAY CANVAS ── -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="#" class="nav-logo">ORIGO</a>
+  <ul class="nav-links">
+    <li><a href="#how">How it Works</a></li>
+    <li><a href="#demo">Live Demo</a></li>
+    <li><a href="#economy">Economy</a></li>
+    <li><a href="#layers">Layers</a></li>
+    <li><a href="#tech">Tech</a></li>
+  </ul>
+  <a href="https://github.com/NeaBouli/origo" class="nav-cta" target="_blank">VIEW ON GITHUB →</a>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <p class="hero-eyebrow">UNIVERSAL ORIGIN GAME · PERSISTENT MULTIPLAYER · CONWAY'S GAME OF LIFE</p>
+  <h1 class="hero-title">ORIGO</h1>
+  <p class="hero-sub">
+    A persistent universe where thousands of players coexist on a single living planet.
+    No random numbers. No pay-to-win. Conway's mathematics decides everything.
+  </p>
+  <div class="hero-actions">
+    <a href="https://github.com/NeaBouli/origo" class="btn-primary" target="_blank">STAR ON GITHUB</a>
+    <a href="#demo" class="btn-ghost">WATCH IT LIVE</a>
+    <span class="lenia-badge"><span class="lenia-dot"></span> LENIA PHASE 1 ACTIVE</span>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-n">∞</div><div class="stat-l">UNIVERSE SIZE</div></div>
+    <div class="stat"><div class="stat-n">4</div><div class="stat-l">CONWAY RULES</div></div>
+    <div class="stat"><div class="stat-n">€1</div><div class="stat-l">PERMANENT ENTRY</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">PAY TO WIN</div></div>
+  </div>
+</section>
+
+<!-- ── LIVE SIMULATION STRIP ── -->
+<section id="live-strip">
+  <canvas id="sim-canvas" height="80"></canvas>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how">
+  <div class="section-inner">
+    <p class="section-label">MECHANICS</p>
+    <h2 class="section-title">HOW ORIGO WORKS</h2>
+    <p class="section-body">
+      Place your seed. Conway takes over. What survives is yours.
+      Every generation your cells earn GHIFR particles — exchangeable
+      for real $IFR tokens. The algorithm is the only judge.
+    </p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">PLACE YOUR SEED</div>
+        <div class="step-body">Choose a starting pattern from the library — Glider, Pulsar, Acorn. Place it anywhere in the Known World. This is your only moment of direct control.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">CONWAY DECIDES</div>
+        <div class="step-body">Four mathematical rules run automatically. Cells live, die, and reproduce. No human intervention. No randomness. Pure deterministic mathematics — forever.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">EARN GHIFR</div>
+        <div class="step-body">Every generation your cells survive, you earn GHIFR particles. More territory = more earnings. The pool distributes proportionally — zero-sum, always covered.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-title">REDEEM TOKENS</div>
+        <div class="step-body">Convert GHIFR to $IFR via a signed claim voucher on the Inferno Protocol. No lockup. 45% of all app revenue continuously buys IFR from the open market.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-title">ASCEND LAYERS</div>
+        <div class="step-body">Produce a stable emergent structure — Glider, Oscillator, Spaceship — that survives 50+ generations. You ascend to Layer 1. The universe expands around you.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">06</div>
+        <div class="step-title">SHAPE THE WORLD</div>
+        <div class="step-body">Discover a novel pattern — one that has never existed before. The community names it. At Layer 2+, you earn the right to define your own survival rule.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── INTERACTIVE CONWAY DEMO ── -->
+<section id="demo">
+  <div class="section-inner">
+    <div class="demo-grid">
+      <div>
+        <canvas id="demo-canvas"></canvas>
+      </div>
+      <div class="demo-info">
+        <p class="demo-label">LIVE · INTERACTIVE</p>
+        <h2 class="demo-title">CONWAY'S<br/>GAME OF<br/>LIFE</h2>
+        <div class="gen-counter" id="gen-counter">GEN 00000000</div>
+        <p class="demo-body">
+          Click anywhere on the grid to place cells. Watch Conway's four rules
+          create order from chaos. This is exactly what runs on ORIGO's server
+          — for thousands of players simultaneously.
+        </p>
+        <ul class="rule-list">
+          <li>Fewer than 2 neighbours → dies (underpopulation)</li>
+          <li>2 or 3 neighbours → survives to next generation</li>
+          <li>More than 3 neighbours → dies (overpopulation)</li>
+          <li>Exactly 3 neighbours → born (reproduction)</li>
+        </ul>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="demoSpawnGlider()" style="background:transparent;border:1px solid var(--border);color:var(--stone);padding:8px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--stone)'">SPAWN GLIDER</button>
+          <button onclick="demoSpawnAcorn()" style="background:transparent;border:1px solid var(--border);color:var(--stone);padding:8px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--stone)'">SPAWN ACORN</button>
+          <button onclick="demoClear()" style="background:transparent;border:1px solid var(--border);color:var(--stone);padding:8px 14px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--stone)'">CLEAR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ECONOMY ── -->
+<section id="economy">
+  <div class="section-inner">
+    <p class="section-label">TOKEN ECONOMY</p>
+    <h2 class="section-title">EARN REAL VALUE<br/>THROUGH MATH</h2>
+    <p class="section-body">
+      ORIGO never handles tokens directly. In-game GHIFR particles convert
+      to $IFR via a signed voucher on the Inferno Protocol.
+      Completely decoupled. Completely clean.
+    </p>
+    <div class="econ-flow">
+      <div class="flow-row"><div class="flow-label">APP PURCHASE</div><div class="flow-val">€1.00 — permanent faction</div></div>
+      <div class="flow-row"><div class="flow-label">AFTER FEES</div><div class="flow-val">~€0.82 (after App Store)</div></div>
+      <div class="flow-row highlight"><div class="flow-label">IFR BUYBACK</div><div class="flow-val">€0.37 → buys $IFR from open market → GameClaimPool</div></div>
+      <div class="flow-row"><div class="flow-label">OPERATOR</div><div class="flow-val">€0.45 → infrastructure & development</div></div>
+      <div class="flow-row"><div class="flow-label">EARN GHIFR</div><div class="flow-val">passively per cell survival per generation</div></div>
+      <div class="flow-row highlight"><div class="flow-label">GHIFR → IFR</div><div class="flow-val">signed EIP-712 voucher → ifrunit.tech → $IFR</div></div>
+      <div class="flow-row"><div class="flow-label">IFR → ETH</div><div class="flow-val">Uniswap — peer-to-peer — no lockup — anytime</div></div>
+    </div>
+
+    <div class="flywheel" style="margin-top:60px">
+      <div class="fly-item gold">MORE PLAYERS</div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-item">MORE REVENUE</div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-item">MORE BUYBACKS</div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-item">IFR PRICE ↑</div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-item">BIGGER REWARDS</div>
+      <div class="fly-arrow">→</div>
+      <div class="fly-item gold">MORE PLAYERS</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:48px;max-width:600px">
+      <div style="background:var(--surface);border:1px solid var(--border);padding:20px;text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold)">46K</div>
+        <div style="font-size:8px;letter-spacing:2px;color:var(--stone);margin-top:4px">IFR / 1K PLAYERS</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:20px;text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold)">462K</div>
+        <div style="font-size:8px;letter-spacing:2px;color:var(--stone);margin-top:4px">IFR / 10K PLAYERS</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);padding:20px;text-align:center">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--gold)">4.6M</div>
+        <div style="font-size:8px;letter-spacing:2px;color:var(--stone);margin-top:4px">IFR / 100K PLAYERS</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── LAYERS ── -->
+<section id="layers">
+  <div class="section-inner">
+    <p class="section-label">UNIVERSE ARCHITECTURE</p>
+    <h2 class="section-title">FROM EARTH<br/>TO THE VOID</h2>
+    <p class="section-body">
+      Start on Earth. Produce a stable emergent structure. Ascend.
+      Each layer is a new world with different rules, different rewards,
+      different mathematics. The universe has no ceiling.
+    </p>
+    <div class="layer-cards">
+      <div class="layer-card l0">
+        <span class="layer-badge">LAYER 0</span>
+        <div class="layer-name">EARTH</div>
+        <div class="layer-rule">CONWAY B3/S23 · 1S TICK · 2048×2048</div>
+        <div class="layer-desc">All players begin here. Standard Conway rules. The Known World — dense, competitive, alive. Your seed goes into an already-living ecosystem.</div>
+        <div class="layer-earn">1× GHIFR RATE</div>
+      </div>
+      <div class="layer-card l1">
+        <span class="layer-badge">LAYER 1</span>
+        <div class="layer-name">NEAR SPACE</div>
+        <div class="layer-rule">CONWAY B3/S23 · 1S TICK · 2048×2048</div>
+        <div class="layer-desc">Unlocked by producing a stable structure for 50+ generations. Your faction exists on both layers simultaneously — base ties you to Layer 0 forever.</div>
+        <div class="layer-earn">1.5× GHIFR RATE</div>
+      </div>
+      <div class="layer-card l2">
+        <span class="layer-badge">LAYER 2</span>
+        <div class="layer-name">DEEP SPACE</div>
+        <div class="layer-rule">EXTENDED KERNEL R=2 · 2S TICK · 1024×1024</div>
+        <div class="layer-desc">The neighborhood expands to 25 cells. More complex pattern dynamics. A mechanical transition zone before the physics change entirely.</div>
+        <div class="layer-earn">2× GHIFR RATE</div>
+      </div>
+      <div class="layer-card l3">
+        <span class="layer-badge">LAYER 3+</span>
+        <div class="layer-name">OUTER VOID</div>
+        <div class="layer-rule">LENIA · 3S TICK · 512×512 FLOAT32</div>
+        <div class="layer-desc">Continuous mathematics. Alien time. Living creatures — solitons — move, breathe, and evolve. Discover a novel creature: the community names it. You define your own survival rule.</div>
+        <div class="layer-earn">5× GHIFR RATE (NOVEL)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TECH ── -->
+<section id="tech">
+  <div class="section-inner">
+    <p class="section-label">TECHNOLOGY</p>
+    <h2 class="section-title">BUILT TO LAST<br/>FOREVER</h2>
+    <p class="section-body">
+      Open source. Deterministic. Auditable.
+      The mathematics is the contract — no admin can change the rules mid-game.
+    </p>
+    <div class="tech-grid">
+      <div class="tech-item">
+        <div class="tech-icon">⚙️</div>
+        <div class="tech-name">RUST ENGINE</div>
+        <div class="tech-desc">Phase 2 Conway + Lenia core. 1000×1000 grid at 10 ticks/sec on a €6/month server. Zero garbage collection pauses.</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon">🌐</div>
+        <div class="tech-name">NODE.JS + WEBSOCKET</div>
+        <div class="tech-desc">Delta-only broadcast — only changed cells transmitted. 500 concurrent connections on a single CX21 node. Reconnect = full snapshot.</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon">🎮</div>
+        <div class="tech-name">THREE.JS + LENIA</div>
+        <div class="tech-desc">3D rotating planet. Instanced cells. WebGL Gaussian shader (Phase 1 Lenia rendering). 3 zoom levels. Drag-rotate. Pinch-zoom. Mobile-ready.</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon">🔐</div>
+        <div class="tech-name">EIP-712 VOUCHERS</div>
+        <div class="tech-desc">Server signs GHIFR claims with ECDSA. Inferno Protocol verifies on-chain. The game never handles tokens. Nonce registry prevents replay. 24h expiry.</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon">🗄️</div>
+        <div class="tech-name">POSTGRES + REDIS</div>
+        <div class="tech-desc">Grid state in Redis RAM — zero DB reads per tick. PostgreSQL for double-entry GHIFR ledger, voucher nonce registry, fossil table, pattern votes.</div>
+      </div>
+      <div class="tech-item">
+        <div class="tech-icon">🔥</div>
+        <div class="tech-name">INFERNO PROTOCOL</div>
+        <div class="tech-desc">$IFR — deflationary ERC-20. 2.5% burned per transfer. 45% of ORIGO revenue continuously buys IFR from Uniswap. GameClaimPool distributes to players.</div>
+      </div>
+    </div>
+
+    <!-- Open source badge area -->
+    <div style="margin-top:60px;border:1px solid var(--border);background:var(--surface);padding:32px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px">
+      <div>
+        <div style="font-size:9px;letter-spacing:3px;color:var(--gold);margin-bottom:8px">OPEN SOURCE</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--offwhite);letter-spacing:2px">github.com/NeaBouli/origo</div>
+        <div style="font-family:'Crimson Pro',serif;font-size:14px;color:var(--stone);margin-top:6px">Every line of game logic is auditable. The mathematics doesn't lie.</div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="background:var(--deep);border:1px solid var(--border);padding:12px 20px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold)">JS</div>
+          <div style="font-size:8px;letter-spacing:2px;color:var(--stone)">PHASE 1</div>
+        </div>
+        <div style="background:var(--deep);border:1px solid var(--border);padding:12px 20px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--gold)">RUST</div>
+          <div style="font-size:8px;letter-spacing:2px;color:var(--stone)">PHASE 2</div>
+        </div>
+        <div style="background:var(--deep);border:1px solid rgba(42,128,128,0.4);padding:12px 20px;text-align:center">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:#4AABAB">LENIA</div>
+          <div style="font-size:8px;letter-spacing:2px;color:var(--stone)">PHASE 3</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta">
+  <div class="cta-inner">
+    <p class="cta-pre">YOUR FACTION AWAITS</p>
+    <h2 class="cta-title">ONE EURO.<br/><span>PERMANENT</span><br/>EXISTENCE.</h2>
+    <p class="cta-body">
+      Place your seed. Watch Conway decide your fate.
+      Your faction lives on the planet forever —
+      surviving, earning, ascending — whether you are watching or not.
+    </p>
+    <a href="https://github.com/NeaBouli/origo" class="btn-primary" target="_blank" style="font-size:12px;padding:16px 40px">
+      FOLLOW DEVELOPMENT →
+    </a>
+    <p class="cta-price">€1.00 · ONE-TIME · PERMANENT · NO SUBSCRIPTION</p>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">ORIGO</div>
+  <div class="footer-links">
+    <a href="https://github.com/NeaBouli/origo" target="_blank">GITHUB</a>
+    <a href="https://ifrunit.tech" target="_blank">INFERNO PROTOCOL</a>
+    <a href="#how">HOW IT WORKS</a>
+    <a href="#tech">TECH STACK</a>
+  </div>
+  <div class="footer-copy">© 2026 VENDETTA LABS · CONWAY'S RULES · NO EXCEPTIONS</div>
+</footer>
+
+<script>
+// ── BACKGROUND CONWAY SIMULATION ──────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx    = canvas.getContext('2d');
+  const CELL   = 14;
+  let cols, rows, grid, next;
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.ceil(canvas.width  / CELL);
+    rows = Math.ceil(canvas.height / CELL);
+    grid = new Uint8Array(cols * rows);
+    next = new Uint8Array(cols * rows);
+    // Sparse random seed
+    for (let i = 0; i < grid.length; i++) {
+      grid[i] = Math.random() < 0.12 ? 1 : 0;
+    }
+  }
+
+  function tick() {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        let n = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (!dr && !dc) continue;
+            const nr = (r + dr + rows) % rows;
+            const nc = (c + dc + cols) % cols;
+            n += grid[nr * cols + nc];
+          }
+        }
+        const alive = grid[r * cols + c];
+        next[r * cols + c] = (alive && (n===2||n===3)) || (!alive && n===3) ? 1 : 0;
+      }
+    }
+    const tmp = grid; grid = next; next = tmp;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (!grid[r * cols + c]) continue;
+        ctx.fillStyle = 'rgba(201,168,76,0.18)';
+        ctx.fillRect(c * CELL + 1, r * CELL + 1, CELL - 2, CELL - 2);
+      }
+    }
+  }
+
+  let frame = 0;
+  function loop() {
+    if (frame % 3 === 0) { tick(); draw(); }
+    frame++;
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener('resize', resize);
+  resize(); loop();
+})();
+
+// ── LIVE SIMULATION STRIP ─────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('sim-canvas');
+  const ctx    = canvas.getContext('2d');
+  const CELL   = 4;
+  const H      = 80;
+  let cols, grid, next;
+  // Faction colors
+  const COLORS = ['#C9A84C','#3A8A4A','#3A6A8A','#8A4A8A','#C94A4A'];
+
+  function init() {
+    canvas.width  = window.innerWidth;
+    canvas.height = H;
+    cols          = Math.ceil(canvas.width / CELL);
+    const rows    = Math.ceil(H / CELL);
+    grid          = new Uint8Array(cols * rows);
+    next          = new Uint8Array(cols * rows);
+    const numFac  = 5;
+    for (let i = 0; i < grid.length; i++) {
+      grid[i] = Math.random() < 0.18 ? (1 + Math.floor(Math.random() * numFac)) : 0;
+    }
+    return rows;
+  }
+
+  let rows = init();
+
+  function tick() {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const neighbors = [];
+        for (let dr=-1;dr<=1;dr++) {
+          for (let dc=-1;dc<=1;dc++) {
+            if(!dr&&!dc) continue;
+            const nr=(r+dr+rows)%rows, nc=(c+dc+cols)%cols;
+            const v=grid[nr*cols+nc];
+            if(v) neighbors.push(v);
+          }
+        }
+        const alive=grid[r*cols+c], n=neighbors.length;
+        if(alive&&(n===2||n===3)) next[r*cols+c]=alive;
+        else if(!alive&&n===3){ const f={}; neighbors.forEach(x=>f[x]=(f[x]||0)+1); next[r*cols+c]=+Object.entries(f).sort((a,b)=>b[1]-a[1])[0][0]; }
+        else next[r*cols+c]=0;
+      }
+    }
+    const tmp=grid; grid=next; next=tmp;
+  }
+
+  function draw() {
+    ctx.fillStyle='#080C18'; ctx.fillRect(0,0,canvas.width,H);
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        const v=grid[r*cols+c]; if(!v) continue;
+        ctx.fillStyle=COLORS[v-1]||'#C9A84C';
+        ctx.fillRect(c*CELL+0.5,r*CELL+0.5,CELL-1,CELL-1);
+      }
+    }
+  }
+
+  window.addEventListener('resize',()=>{ rows=init(); });
+  let fr=0;
+  function loop(){ if(fr%2===0){tick();draw();} fr++; requestAnimationFrame(loop); }
+  loop();
+})();
+
+// ── INTERACTIVE DEMO CANVAS ───────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('demo-canvas');
+  const ctx    = canvas.getContext('2d');
+  const SIZE   = 60;
+  const CELL   = Math.floor(420 / SIZE);
+  canvas.width = canvas.height = SIZE * CELL;
+
+  let grid = new Uint8Array(SIZE * SIZE);
+  let next = new Uint8Array(SIZE * SIZE);
+  let gen  = 0;
+
+  const GOLD = '#C9A84C', DIM = '#1A2640', BG = '#080C18';
+
+  // Seed with glider
+  function seedGlider(r, c) {
+    [[0,1],[1,2],[2,0],[2,1],[2,2]].forEach(([dr,dc]) => {
+      const nr=r+dr, nc=c+dc;
+      if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE) grid[nr*SIZE+nc]=1;
+    });
+  }
+
+  function seedAcorn(r, c) {
+    [[0,1],[1,3],[2,0],[2,1],[2,4],[2,5],[2,6]].forEach(([dr,dc]) => {
+      const nr=r+dr, nc=c+dc;
+      if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE) grid[nr*SIZE+nc]=1;
+    });
+  }
+
+  seedGlider(10, 10);
+  seedGlider(30, 40);
+  seedAcorn(25, 20);
+
+  window.demoSpawnGlider = () => {
+    const r = Math.floor(Math.random()*(SIZE-5)), c = Math.floor(Math.random()*(SIZE-5));
+    seedGlider(r, c);
+  };
+  window.demoSpawnAcorn = () => {
+    const r = Math.floor(Math.random()*(SIZE-8)), c = Math.floor(Math.random()*(SIZE-8));
+    seedAcorn(r, c);
+  };
+  window.demoClear = () => { grid.fill(0); gen=0; };
+
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const c = Math.floor((e.clientX - rect.left) * scaleX / CELL);
+    const r = Math.floor((e.clientY - rect.top)  * scaleY / CELL);
+    if(r>=0&&r<SIZE&&c>=0&&c<SIZE) grid[r*SIZE+c] ^= 1;
+  });
+
+  function tick() {
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        let n=0;
+        for(let dr=-1;dr<=1;dr++){
+          for(let dc=-1;dc<=1;dc++){
+            if(!dr&&!dc) continue;
+            n+=grid[((r+dr+SIZE)%SIZE)*SIZE+((c+dc+SIZE)%SIZE)];
+          }
+        }
+        const alive=grid[r*SIZE+c];
+        next[r*SIZE+c]=(alive&&(n===2||n===3))||(!alive&&n===3)?1:0;
+      }
+    }
+    const tmp=grid; grid=next; next=tmp; gen++;
+    document.getElementById('gen-counter').textContent='GEN '+String(gen).padStart(8,'0');
+  }
+
+  function draw() {
+    ctx.fillStyle=BG; ctx.fillRect(0,0,canvas.width,canvas.height);
+    // Grid lines
+    ctx.strokeStyle=DIM; ctx.lineWidth=0.3;
+    for(let i=0;i<=SIZE;i++){
+      ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,SIZE*CELL); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(SIZE*CELL,i*CELL); ctx.stroke();
+    }
+    // Cells with glow
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        if(!grid[r*SIZE+c]) continue;
+        ctx.shadowColor=GOLD; ctx.shadowBlur=6;
+        ctx.fillStyle=GOLD;
+        ctx.fillRect(c*CELL+1,r*CELL+1,CELL-2,CELL-2);
+        ctx.shadowBlur=0;
+      }
+    }
+  }
+
+  let fr=0;
+  function loop(){ if(fr%3===0){tick();draw();} fr++; requestAnimationFrame(loop); }
+  draw(); loop();
+})();
+
+// ── SCROLL REVEAL ─────────────────────────────────────────────────────────────
+const observer = new IntersectionObserver(entries => {
+  entries.forEach((e, i) => {
+    if(e.isIntersecting){
+      // Stagger children
+      const delay = e.target.dataset.delay || 0;
+      setTimeout(() => e.target.classList.add('visible'), delay);
+    }
+  });
+}, { threshold: 0.15 });
+
+document.querySelectorAll('.step,.flow-row,.layer-card,.tech-item').forEach((el, i) => {
+  el.dataset.delay = (i % 4) * 80;
+  observer.observe(el);
+});
+</script>
+</body>
+</html>
