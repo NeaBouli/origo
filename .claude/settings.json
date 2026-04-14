@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "disallowedPaths": [".env", ".env.local", "node_modules/", ".git/"]
+  },
+  "autoApprove": ["read", "list"]
+}

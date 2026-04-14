@@ -1,543 +1,388 @@
-# ORIGO — Master TODO List
+# ORIGO — Master TODO List v1.1
 **Repo:** https://github.com/NeaBouli/origo  
-**Stand:** Genesis Commit gepusht. Server startet nicht. 3 kritische Bugs offen.  
-**Sprache:** Kommunikation Deutsch · Code/Commits Englisch  
-**Ziel:** Von 0 auf lauffähige Web-App, dann Mobile, dann Token-Integration.
+**Stand:** Genesis Commit gepusht + Lenia Phase 1 integriert.  
+**Sprache:** Kommunikation Deutsch · Code/Commits Englisch
 
 ---
 
-## 🔴 KRITISCHE BUGS — SOFORT FIXEN (Server startet nicht)
+## 🔴 KRITISCHE BUGS — SOFORT (Server startet nicht)
 
 ### BUG-001 — 6 fehlende Server-Module
-`server/src/index.js` importiert 6 Module die nicht existieren. Server crasht beim Start.
-
-- [ ] **BUG-001-A** — `server/src/api/auth.js` erstellen
+- [ ] **BUG-001-A** `server/src/api/auth.js`
   - Express Router
-  - `POST /api/auth/register` — Email + Passwort → User in DB anlegen → JWT zurückgeben
-  - `POST /api/auth/login` — Credentials prüfen → JWT zurückgeben
-  - `GET  /api/auth/me` — JWT verifizieren → User-Daten zurückgeben
-  - Middleware: `authenticateJWT(req, res, next)` exportieren für andere Router
-  - Passwort: bcrypt hash, min 8 Zeichen
-  - JWT: 30 Tage Gültigkeit, payload: `{ userId, factionId }`
+  - `POST /api/auth/register` → User in DB + JWT
+  - `POST /api/auth/login` → JWT
+  - `GET  /api/auth/me` → User-Daten
+  - Export: `authenticateJWT` Middleware
+  - Passwort: bcrypt, min 8 Zeichen · JWT: 30 Tage, payload `{ userId, factionId }`
 
-- [ ] **BUG-001-B** — `server/src/api/faction.js` erstellen
-  - Express Router
-  - `POST /api/faction/create` — Neue Fraktion anlegen
-    - Input: `{ name, color, patternId }` + Auth-Middleware
-    - Validierung: name 2–24 Zeichen, color gültiges Hex, patternId in Bibliothek
-    - Startzelle im Grid setzen (Seed-Pattern ab Pos `[10, 10]` + random offset)
-    - DB: factions-Tabelle, ghifr_ledger Starteintrag 0
-    - JWT neu ausstellen mit `factionId`
+- [ ] **BUG-001-B** `server/src/api/faction.js`
+  - `POST /api/faction/create` — Input: `{ name, color, patternId }` + Auth
+    - Validierung: name 2–24, color Hex, patternId in Bibliothek
+    - Startzelle im Grid setzen, GHIFR-Ledger 0 anlegen
     - Response: `{ token, faction: { id, name, color, layer } }`
-  - `GET  /api/faction/me` — Eigene Fraktion + Stats abrufen
-  - `GET  /api/faction/leaderboard` — Top 50 nach Zellanzahl (aus Redis)
-  - `GET  /api/faction/all` — Alle aktiven Fraktionen (Name, Farbe, Layer)
+  - `GET  /api/faction/me` — Eigene Fraktion + Stats
+  - `GET  /api/faction/leaderboard` — Top 50 nach Zellanzahl
+  - `GET  /api/faction/all` — Alle aktiven Fraktionen
 
-- [ ] **BUG-001-C** — `server/src/api/ghifr.js` erstellen
-  - Express Router
-  - `GET  /api/ghifr/balance` — Aktuelles GHIFR-Guthaben aus DB (Summe Ledger)
-  - `GET  /api/ghifr/history` — Letzte 100 Ledger-Einträge
-  - `GET  /api/ghifr/pool` — Aktueller Pool-Stand + Rate + aktive Spieler
-  - Hilfsfunktion: `getBalance(factionId)` — Summe aller Ledger-Einträge
+- [ ] **BUG-001-C** `server/src/api/ghifr.js`
+  - `GET /api/ghifr/balance` — Summe Ledger
+  - `GET /api/ghifr/history` — Letzte 100 Einträge
+  - `GET /api/ghifr/pool` — Pool-Stand, Rate, aktive Spieler
+  - Hilfsfunktion: `getBalance(factionId)`
 
-- [ ] **BUG-001-D** — `server/src/api/voucher.js` erstellen
-  - Express Router
-  - `POST /api/voucher/issue` — Voucher ausstellen
-    - Input: `{ ghifrAmount }` (min 100 GHIFR)
-    - Prüfen: Guthaben >= ghifrAmount
-    - EIP-712 ECDSA signieren (ethers.js)
-    - Nonce generieren (32 random bytes)
-    - Expiry: jetzt + 24h
-    - DB: vouchers-Tabelle INSERT
-    - GHIFR-Ledger: negativer Eintrag (Deduktion)
-    - Response: `{ voucher, signature }`
-  - `GET  /api/voucher/list` — Eigene Voucher (issued, claimed, expired)
-  - `GET  /api/voucher/status/:nonce` — Status eines Vouchers prüfen
+- [ ] **BUG-001-D** `server/src/api/voucher.js`
+  - `POST /api/voucher/issue` — min 100 GHIFR, EIP-712 ECDSA, Nonce, 24h Expiry
+  - `GET  /api/voucher/list` — Eigene Voucher
+  - `GET  /api/voucher/status/:nonce` — Voucher-Status
 
-- [ ] **BUG-001-E** — `server/src/jobs/fossil.js` erstellen
-  - Cron-Job: täglich 02:00 UTC (`node-cron`)
-  - Für alle Fossilien mit `status = 'active'`: `decay_day += 1`
-  - Fossilien mit `decay_day >= 30`: `status = 'expired'`
-  - Extinktions-Check: Fossilien-Dichte berechnen
-    - `active_fossils / (GRID_COLS * GRID_ROWS)`
-    - Wenn Dichte > 0.35: `triggerExtinctionEvent('density')` aufrufen
-  - Extinktionsereignis-Funktion:
-    - Älteste 20% der Fossilien auf `expired` setzen
-    - WebSocket Event `{ type: 'event', event: 'extinction', data: { cleared, trigger } }` broadcasten
-  - Exportieren: `startFossilJob(broker)` — broker für WS-Broadcast nötig
+- [ ] **BUG-001-E** `server/src/jobs/fossil.js`
+  - Cron täglich 02:00 UTC
+  - `decay_day += 1` für alle aktiven Fossilien
+  - `decay_day >= 30` → `status = 'expired'`
+  - Dichte-Check → Extinktionsereignis bei > 35%
+  - Export: `startFossilJob(broker)`
 
-- [ ] **BUG-001-F** — `server/src/jobs/pool.js` erstellen
-  - GHIFR Pool Distribution — läuft jeden Tick (aufgerufen von tick.js)
-  - Funktion: `distributeGHIFR(cellCounts, generation)`
-    - `cellCounts`: `{ factionId: anzahlZellen }` — kommt vom Conway Engine
-    - Gesamtzellen berechnen
-    - Pro Fraktion: `anteil = (eigeneZellen / gesamtZellen) * GHIFR_PER_CELL_PER_TICK`
-    - Mindestbonus sicherstellen: `Math.max(anteil, MIN_PER_ACTIVE_TICK)`
-    - Batch-Insert in `ghifr_ledger` (alle Fraktionen in einer Transaktion)
-    - Alle 100 Ticks: GHIFR-Balance per WebSocket an jeweiligen Client senden
-  - Funktion: `startPoolJob(broker)` — exportieren für server/index.js
-  - Pool-Balance aus DB berechnen: Summe aller positiven Ledger-Einträge
+- [ ] **BUG-001-F** `server/src/jobs/pool.js`
+  - `distributeGHIFR(cellCounts, generation)` — proportionale Verteilung
+  - Batch-Insert ghifr_ledger pro Tick
+  - Alle 100 Ticks: Balance per WS senden
+  - Export: `startPoolJob(broker)`
 
 ---
 
 ### BUG-002 — `packages/renderer/` fehlt komplett
-`packages/web/package.json` und `vite.config.js` referenzieren `@origo/renderer` — Package existiert nicht.
-
-- [ ] **BUG-002-A** — `packages/renderer/package.json` erstellen
-  - Name: `@origo/renderer`
-  - Dependencies: `three`
-  - Main: `src/index.js`
-
-- [ ] **BUG-002-B** — `packages/renderer/src/index.js` erstellen
-  - Re-exportiert alle Renderer-Klassen
-  - `export { UniverseRenderer } from './UniverseRenderer.js'`
-  - `export { ProcGen } from './ProcGen.js'`
-  - `export { FossilRenderer } from './FossilRenderer.js'`
-
-- [ ] **BUG-002-C** — `packages/renderer/src/UniverseRenderer.js` erstellen
-  - Kopie/Refactor von `packages/web/src/renderer/UniverseRenderer.js`
-  - Plattform-agnostisch (kein direkter DOM-Zugriff außer canvas)
-  - Exports: `class UniverseRenderer`
-
-- [ ] **BUG-002-D** — `packages/renderer/src/ProcGen.js` erstellen
-  - Prozedurale Planetengenerierung via Perlin Noise
-  - Funktion: `generatePlanetTexture(seed, width, height)` → Canvas / ImageData
-  - Farbpaletten pro Planet-Typ: `earth | mars | alien | nebula | void`
-  - Perlin Noise Implementierung (pure JS, keine externe Dep)
-  - Exports: `class ProcGen`
-
-- [ ] **BUG-002-E** — `packages/renderer/src/FossilRenderer.js` erstellen
-  - Verwaltet Alpha-Decay der Fossil-Zellen im InstancedMesh
-  - Funktion: `updateFossils(fossilData)` — `fossilData`: `[{ row, col, decayDay, color }]`
-  - Alpha-Berechnung via `fossilAlpha(decayDay)` aus `@origo/core`
-  - Separates InstancedMesh von lebenden Zellen
-  - Exports: `class FossilRenderer`
+- [ ] **BUG-002-A** `packages/renderer/package.json` — Name: `@origo/renderer`
+- [ ] **BUG-002-B** `packages/renderer/src/index.js` — Re-exportiert alle Renderer-Klassen inkl. `LeniaRenderPass`
+- [ ] **BUG-002-C** `packages/renderer/src/UniverseRenderer.js` — Kopie aus web, plattform-agnostisch
+- [ ] **BUG-002-D** `packages/renderer/src/ProcGen.js` — Perlin Noise Planetentexturen, 5 Biom-Typen
+- [ ] **BUG-002-E** `packages/renderer/src/FossilRenderer.js` — Alpha-Decay InstancedMesh, separat von Lebend-Zellen
+- [ ] **BUG-002-F** `packages/renderer/src/LeniaRenderPass.js` — Kopie aus web (bereits erstellt, hier nur verlinken)
 
 ---
 
-### BUG-003 — Earth NASA Textur fehlt
-`UniverseRenderer.js` lädt `/textures/earth_day.jpg` — Datei existiert nicht → Planet rendert grau.
+### BUG-003 — NASA Earth Textur fehlt
+- [ ] **BUG-003-A** `packages/web/public/textures/` Ordner anlegen
+- [ ] **BUG-003-B** NASA Blue Marble herunterladen → `earth_day.jpg` (2048×1024, < 2MB)
+  - URL: `https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg`
+- [ ] **BUG-003-C** Optional: `earth_night.jpg` für Nachtseite
 
-- [ ] **BUG-003-A** — `packages/web/public/textures/` Ordner erstellen
-- [ ] **BUG-003-B** — NASA Blue Marble Textur herunterladen
-  - URL: `https://visibleearth.nasa.gov/images/73909` (public domain)
-  - Dateiname: `earth_day.jpg`
-  - Ablage: `packages/web/public/textures/earth_day.jpg`
-  - Alternativ: `https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg` (direkt)
-  - Auf 2048x1024 px reduzieren (Dateigröße < 2MB)
-- [ ] **BUG-003-C** — Night-Textur optional: `earth_night.jpg` für dunkle Seite
+---
+
+## 🟡 PHASE 1 — LENIA (BEREITS GESTARTET)
+
+### LENIA-P1 — Client-seitiger Render Pass (kein Server, kein DB)
+*Status: LeniaRenderPass.js und updated UniverseRenderer.js bereits erstellt.*
+
+- [x] **LENIA-P1-A** `packages/web/src/renderer/LeniaRenderPass.js` erstellt
+  - WebGL ShaderMaterial: Gaussian Convolution über Conway-Grid
+  - ORIGO Gold/Teal Farbramp
+  - Tunable: kernel radius R, sigma
+  - `tick(dt)` für Animation-Clock
+  - `updateGrid(grid, colors, myId)` bei jedem Delta
+
+- [x] **LENIA-P1-B** `UniverseRenderer.js` updated
+  - `LeniaRenderPass` integriert — overlay sphere bei radius 1.003
+  - `setLeniaMode(bool)` — Toggle binary ↔ Lenia
+  - `getLeniaMode()` — aktuellen Status abfragen
+  - Lenia-Pass läuft immer mit (updateGrid auch wenn disabled), kein Performance-Problem
+
+- [x] **LENIA-P1-C** `FactionHUD.jsx` updated
+  - "RENDER MODE" Toggle-Button: Binary ↔ Lenia
+  - `lenia-toggle` Window-Event für State-Sync
+
+- [x] **LENIA-P1-D** `packages/web/.env.example` erstellt
+  - `VITE_LENIA_RENDER=true` Feature Flag
+
+- [x] **LENIA-P1-E** Lenia-Konstanten in `@origo/core/src/constants.js`
+  - `LENIA_KERNEL_RADIUS`, `LENIA_SIGMA`, `LENIA_GRID_W/H`, `LENIA_TICK_MS`
+  - `LENIA_DELTA_EPSILON`, Similarity-Thresholds, `WS_LENIA`, `LENIA_EARN`
+
+- [ ] **LENIA-P1-F** `packages/web/.env` aus `.env.example` anlegen (lokal, nicht in Git)
+- [ ] **LENIA-P1-G** Lenia-Pass im Browser testen
+  - Toggle an/aus, kein Absturz
+  - Organische Übergänge sichtbar beim Conway-Tick
+  - Performance: < 5ms GPU pro Frame auf Mid-Range Hardware
+- [ ] **LENIA-P1-H** Lenia Sigma + Radius als Settings-Slider im HUD (optional)
 
 ---
 
 ## 🟡 PHASE 1 — SERVER VOLLSTÄNDIG MACHEN
 
-### 1.1 — Datenbank
+### 1.1 — Infrastruktur Middleware
+- [ ] **SERVER-001** `server/src/middleware/auth.js` — `authenticateJWT(req,res,next)`
+- [ ] **SERVER-002** `server/src/middleware/validate.js` — Input-Sanitierung, XSS-Schutz
+- [ ] **SERVER-003** `server/src/middleware/rateLimit.js` — 100 req/min pro IP, 5 Voucher/h pro Fraktion
+- [ ] **SERVER-004** `server/src/middleware/errorHandler.js` — Zentraler Error-Handler
 
-- [ ] **DB-001** — `db/migrate.js` testen
-  - `npm run migrate` ausführen
-  - Alle 6 Tabellen prüfen: `users, factions, ghifr_ledger, vouchers, fossils, patterns, pattern_votes`
-  - Seed-Daten prüfen: 8 Patterns in `patterns`-Tabelle
+### 1.2 — Datenbank
+- [ ] **DB-001** `npm run migrate` — alle Tabellen anlegen, Seed verifizieren
+- [ ] **DB-002** `db/migrations/002_lenia.sql` bereits erstellt — wird in Phase 3 ausgeführt (nicht jetzt)
+- [ ] **DB-003** GHIFR Balance View: `CREATE VIEW ghifr_balances AS SELECT faction_id, SUM(amount) AS balance FROM ghifr_ledger GROUP BY faction_id`
+- [ ] **DB-004** Faction Stats View: Name, Farbe, Layer, Balance, Rang
 
-- [ ] **DB-002** — GHIFR Balance View erstellen (Migration 002)
-  - `CREATE VIEW ghifr_balances AS SELECT faction_id, SUM(amount) as balance FROM ghifr_ledger GROUP BY faction_id`
-  - Schnellere Balance-Abfragen
-
-- [ ] **DB-003** — Faction Stats View erstellen (Migration 003)
-  - `CREATE VIEW faction_stats AS ...` — Name, Farbe, Layer, Balance, Rang
-
-### 1.2 — Server Infrastruktur
-
-- [ ] **SERVER-001** — `server/src/middleware/auth.js` erstellen
-  - `authenticateJWT` Middleware — für alle geschützten Routen
-  - JWT aus `Authorization: Bearer <token>` Header lesen
-  - Bei ungültigem Token: `401 Unauthorized`
-  - `req.user = { userId, factionId }` setzen
-
-- [ ] **SERVER-002** — `server/src/middleware/validate.js` erstellen
-  - Input-Validierung für alle API-Routen
-  - Sanitierung von String-Inputs (XSS-Schutz)
-  - Zahl-Validierungen für GHIFR-Beträge
-
-- [ ] **SERVER-003** — `server/src/middleware/rateLimit.js` erstellen
-  - Rate-Limiting pro IP: max 100 Requests / Minute
-  - Voucher-Endpoint: max 5 / Stunde pro Fraktion
-  - Zell-Platzierung: max 10 / Minute pro Fraktion
-
-- [ ] **SERVER-004** — Error-Handler global (`server/src/middleware/errorHandler.js`)
-  - Zentraler Express Error-Handler
-  - Kein Stack-Trace in Production
-  - Einheitliches Error-Response-Format: `{ error: string, code: string }`
-
-- [ ] **SERVER-005** — `server/src/api/patterns.js` erstellen
-  - `GET  /api/patterns/library` — Alle bekannten Patterns aus DB
-  - `GET  /api/patterns/unnamed` — Patterns zur Benennung (Community Vote)
-  - `POST /api/patterns/vote` — Vote für einen Namen einreichen
-    - Quadratisches Voting: GHIFR-Kosten = `votesAlready^2`
-    - GHIFR vom Guthaben abziehen
+### 1.3 — Pattern System
+- [ ] **SERVER-005** `server/src/api/patterns.js`
+  - `GET  /api/patterns/library` — Alle bekannten Patterns
+  - `GET  /api/patterns/unnamed` — Patterns zur Community-Abstimmung
+  - `POST /api/patterns/vote` — Quadratisches Voting (GHIFR-Kosten = votes²)
   - `GET  /api/patterns/votes/:patternId` — Abstimmungsstand
 
-- [ ] **SERVER-006** — Pattern Detection in Conway Engine integrieren
-  - Nach jedem Tick: `detectPatterns(grid, generation)` aufrufen
-  - Bekannte Patterns (Bitmask-Matching) in aktiven Sektoren suchen
-  - Neue stabile Patterns (50+ Generationen) flaggen
-  - Neue Pattern-Kandidaten in DB schreiben (`status = 'unnamed'`)
+- [ ] **SERVER-006** Pattern Detection in `server/src/jobs/tick.js`
+  - Nach jedem Tick: Bekannte Patterns suchen (Bitmask-Matching)
+  - Neue stabile Patterns (50+ Gens) als `unnamed` flaggen
+  - DB-INSERT für neue Kandidaten
 
-- [ ] **SERVER-007** — Layer-Transition Logic (`server/src/engine/layerTransition.js`)
-  - Prüfen ob eine Fraktion die Aufstiegsbedingung erfüllt
-  - Bedingung: Stabile Struktur (aus Pattern-Bibliothek) 50+ Generationen
-  - Bei Erfüllung: `factions.layer += 1` in DB
-  - WebSocket Event: `{ type: 'event', event: 'layer_up', data: { factionId, layer } }`
-  - Aufruf: alle 50 Ticks in `tick.js`
+- [ ] **SERVER-007** `server/src/engine/layerTransition.js`
+  - Aufstiegsbedingung prüfen alle 50 Ticks
+  - DB: `factions.layer += 1`
+  - WS Event: `{ type: 'event', event: 'layer_up', data: { factionId, layer } }`
 
-- [ ] **SERVER-008** — Snapshot-Endpoint (`server/src/ws/snapshot.js`)
-  - Vollständigen Grid-State aus Redis lesen
-  - Base64-kodiert an neu verbundene Clients senden
-  - Bei fehlendem Redis-State: Aus Engine direkt lesen
+- [ ] **SERVER-008** `server/src/ws/snapshot.js` — Vollständiger Grid-State auf Reconnect
 
-### 1.3 — Conway Engine erweitern
+### 1.4 — Conway Engine erweitern
+- [ ] **ENGINE-001** Custom Rules per Fraktion testen + DB-Integration beim Start laden
+- [ ] **ENGINE-002** Zell-Platzierung validieren: max 10/Request, Sektor-Check, 1 GHIFR/Zelle
+- [ ] **ENGINE-003** `server/src/engine/sector.js` — 100×100 Sektoren, Sleep/Wake, 2-Cell-Buffer
+- [ ] **ENGINE-004** Fossil-Registrierung bei Zelltod — Batch-Insert alle 10 Ticks
 
-- [ ] **ENGINE-001** — Custom Rules per Fraktion (`server/src/engine/conway.js`)
-  - `setCustomRule(factionId, survive[], born[])` bereits vorhanden — testen
-  - `getCustomRule(factionId)` hinzufügen
-  - `clearCustomRule(factionId)` hinzufügen
-  - DB-Integration: Custom Rules aus DB laden beim Server-Start
+### 1.5 — Web Client Screens
+- [ ] **WEB-001** `packages/web/src/screens/Faction.jsx`
+  - GHIFR-Balance, Verlauf (Chart), Voucher anfordern, Layer-Fortschritt
 
-- [ ] **ENGINE-002** — Zell-Platzierung validieren
-  - Prüfen ob Zelle frei ist (factionId === 0)
-  - Max 10 Zellen pro Platzierungs-Request
-  - Zellen dürfen nur in Layer-0-Bereich für Layer-0-Fraktionen
-  - GHIFR-Kosten für Platzierung: 1 GHIFR pro Zelle
+- [ ] **WEB-002** `packages/web/src/screens/Leaderboard.jsx`
+  - Top 50, Live-Updates, Layer-Filter
 
-- [ ] **ENGINE-003** — Sektor-System (`server/src/engine/sector.js`)
-  - Grid in 100×100 Sektoren unterteilen
-  - Schlafende Sektoren: Nur 2-Zellen-Buffer aktiv
-  - Wake-on-demand: Sektor aufwachen wenn Client ihn beobachtet
-  - `getSectorState(sectorId)` — State für Snapshot
+- [ ] **WEB-003** `packages/web/src/screens/Patterns.jsx`
+  - Pattern-Bibliothek, Community-Vote-UI, Quadratic-Voting-Kosten anzeigen
 
-- [ ] **ENGINE-004** — Fossil-Registrierung bei Zelltod
-  - Wenn Zelle stirbt (war alive, jetzt 0): Fossil-Eintrag in DB
-  - Batch-Insert alle 10 Ticks (nicht jeden Tick wegen Performance)
-  - Fossil-Daten: `{ faction_id, planet, col, row, death_generation }`
+- [ ] **WEB-004** Navigation (Bottom Bar) — Universe | Faction | Leaderboard | Patterns
 
----
+- [ ] **WEB-005** `Universe.jsx` erweitern — Faction-Tooltip, Zell-Platzierung im Micro-Zoom
 
-## 🟡 PHASE 1 — WEB CLIENT VOLLSTÄNDIG MACHEN
+### 1.6 — Renderer erweitern
+- [ ] **WEB-006** Fossil Alpha-Decay in `UniverseRenderer.js` — separates InstancedMesh
+- [ ] **WEB-007** Glow-Effekte: `sin(time)` Puls auf eigene Zellen, Spawn-Animation
+- [ ] **WEB-008** Extinction Event Animation — Shockwave-Ring + UI-Overlay
+- [ ] **WEB-009** LOD-System — Makro: Cluster · Meso: Zellen · Mikro: Full Glow
+- [ ] **WEB-010** `packages/web/src/components/MiniMap.jsx`
 
-### 2.1 — UI Screens
+### 1.7 — State & Stabilität
+- [ ] **WEB-011** WebSocket-Reconnect-Test — nach Server-Neustart Snapshot korrekt
+- [ ] **WEB-012** Offline-State — "Reconnecting..." Overlay, kein Absturz
+- [ ] **WEB-013** `packages/web/src/store/uiStore.js` — UI-State, Toast-System
+- [ ] **WEB-014** `packages/web/src/components/Toast.jsx`
 
-- [ ] **WEB-001** — `packages/web/src/screens/Faction.jsx` erstellen
-  - Eigene Fraktion Dashboard
-  - Anzeige: Name, Farbe, Layer, Zellanzahl, Territorium %, Rang
-  - GHIFR Balance + Verlauf (Linien-Chart)
-  - Voucher anfordern: Eingabefeld + Button + Bestätigung
-  - Aktive Voucher Liste (nonce, Betrag, Ablauf, Status)
-  - Layer-Fortschrittsanzeige (wie viele Gens noch bis Aufstieg)
+### 1.8 — Testing
+- [ ] **TEST-001** Conway Engine Determinismus-Test
+- [ ] **TEST-002** API Integration Tests (auth, faction, ghifr, voucher)
+- [ ] **TEST-003** WebSocket-Test (snapshot, delta, reconnect)
+- [ ] **TEST-004** GHIFR Pool-Mathematik (Nullsumme, Proportionalität)
+- [ ] **TEST-005** Lenia Render Pass — Toggle an/aus, kein Frame-Drop, korrekte GPU-Last
 
-- [ ] **WEB-002** — `packages/web/src/screens/Leaderboard.jsx` erstellen
-  - Top 50 Fraktionen nach Zellanzahl
-  - Spalten: Rang, Name, Farbe, Layer, Territorium %, GHIFR verdient
-  - Live-Updates via WebSocket
-  - Eigene Fraktion hervorgehoben
-  - Filter: Layer 0 / Layer 1 / Alle
-
-- [ ] **WEB-003** — `packages/web/src/screens/Patterns.jsx` erstellen
-  - Pattern-Bibliothek anzeigen (alle bekannten Patterns)
-  - Unnamed Patterns: Community-Vote UI
-    - Name vorschlagen (Input)
-    - Abstimmen (kostet GHIFR, quadratisch)
-    - Verbleibende Abstimmungszeit anzeigen
-  - Eigene entdeckte Patterns hervorgehoben
-
-- [ ] **WEB-004** — Navigation zwischen Screens
-  - Bottom Navigation Bar: Universe | Faction | Leaderboard | Patterns
-  - Aktiver Screen hervorgehoben
-  - Transition-Animation zwischen Screens
-
-- [ ] **WEB-005** — `packages/web/src/screens/Universe.jsx` erweitern
-  - Planet-Navigation: Klick auf anderen Planeten im Makro-Zoom
-  - Faction-Tooltip beim Hover über Zellen (Name, Farbe, Zellanzahl)
-  - Zell-Platzierung im Mikro-Zoom: Klick = eigene Zelle platzieren
-  - Platzierungskosten anzeigen (1 GHIFR / Zelle)
-  - Bestätigungsdialog vor Platzierung
-
-### 2.2 — Renderer erweitern
-
-- [ ] **WEB-006** — Fossil-Rendering in `UniverseRenderer.js`
-  - Separates InstancedMesh für Fossilien
-  - Alpha-Decay visual (transparent werdend über 30 Tage)
-  - Fossil-Daten via WebSocket empfangen
-
-- [ ] **WEB-007** — Glow-Effekte für eigene Zellen
-  - Eigene Fraktion: helleres Leuchten, `multiplyScalar(1.5)` bereits vorhanden
-  - Pulsierender Effekt: `sin(time) * 0.1` auf Helligkeit
-  - Neue Zellen: kurze Spawn-Animation (scale 0 → 1)
-
-- [ ] **WEB-008** — Extinction Event Animation
-  - Bei `event: 'extinction'` WebSocket-Nachricht
-  - Shockwave-Ring expandiert vom Planeten-Zentrum
-  - Particles-Burst für sterbende Fossilien
-  - UI-Overlay: "EXTINCTION EVENT" mit Anzahl gelöschter Fossilien
-
-- [ ] **WEB-009** — LOD (Level of Detail) System
-  - Makro-Zoom: Planet als Sphere, Fraktionen als farbige Cluster (keine Einzelzellen)
-  - Meso-Zoom: Einzelne Zellen sichtbar, keine Glow-Effekte
-  - Mikro-Zoom: Volle Glow-Effekte, Fossil-Detail, Zell-Platzierung möglich
-  - Automatischer Wechsel basierend auf Kamera-Distanz
-
-- [ ] **WEB-010** — `packages/web/src/components/MiniMap.jsx` erstellen
-  - Kleines 2D Grid-Overlay (rechts oben)
-  - Fraktionsfarben als Punkte
-  - Aktueller Viewport als Rahmen
-  - Klick auf MiniMap springt zu dieser Position
-
-### 2.3 — State & WebSocket
-
-- [ ] **WEB-011** — WebSocket-Reconnect-Logik testen
-  - Server neu starten → Client reconnected automatisch
-  - Nach Reconnect: Snapshot empfangen, Grid korrekt neu aufgebaut
-  - GHIFR-Balance nach Reconnect korrekt
-
-- [ ] **WEB-012** — Offline-State
-  - Wenn WebSocket getrennt: Overlay "Reconnecting..."
-  - Planet weiterdrehen (Client-seitig) auch ohne Server
-  - Kein Absturz bei fehlendem Grid
-
-- [ ] **WEB-013** — `packages/web/src/store/uiStore.js` erstellen
-  - Separater Store für UI-State (nicht Game-State)
-  - Aktiver Screen, Modal-State, Toast-Notifications
-  - Toast-System: `showToast(message, type)` — type: success|error|info
-
-- [ ] **WEB-014** — Toast-Notification-System
-  - `packages/web/src/components/Toast.jsx`
-  - Automatisch verschwinden nach 3 Sekunden
-  - Für: Zell-Platzierung, Voucher ausgestellt, Layer-Aufstieg, Extinktion
+### 1.9 — Lokale Dev-Umgebung
+- [ ] **INFRA-001** `npm run docker:up` — Postgres + Redis starten
+- [ ] **INFRA-002** `npm run migrate` — Tabellen verifizieren
+- [ ] **INFRA-003** `server/.env` aus `.env.example` befüllen
+- [ ] **INFRA-004** `npm run dev` — Server + Web Client ohne Fehler
+- [ ] **INFRA-005** `infra/scripts/dev-seed.js` — Test-User + 3 Fraktionen + 1000 GHIFR
 
 ---
 
-## 🟡 PHASE 1 — INFRASTRUKTUR
+## 🟢 PHASE 2 — RUST ENGINE (Pflicht vor Lenia Phase 3)
 
-### 3.1 — Lokale Entwicklungsumgebung
+> ⚠️ Lenia Phase 3 ist HARD-GATED auf Rust Engine. Kein Lenia-Layer vor RUST-008.
 
-- [ ] **INFRA-001** — Docker Compose testen
-  - `npm run docker:up` — Postgres + Redis starten
-  - Postgres Verbindung prüfen: `psql postgresql://origo:origo_dev@localhost:5432/origo`
-  - Redis Verbindung prüfen: `redis-cli ping`
-
-- [ ] **INFRA-002** — Migrations ausführen und verifizieren
-  - `npm run migrate`
-  - Alle Tabellen vorhanden: `\dt` in psql
-  - Pattern-Seed-Daten vorhanden: `SELECT count(*) FROM patterns`
-
-- [ ] **INFRA-003** — `server/.env` aus `.env.example` befüllen
-  - `JWT_SECRET` — 64 Zeichen random string generieren
-  - `VOUCHER_SIGNER_PRIVATE_KEY` — Temporären Test-Key (Sepolia) generieren
-  - `GAME_CLAIM_POOL_ADDRESS` — Testnet-Adresse eintragen
-  - `POSTGRES_URL` — Lokale Docker Postgres URL
-  - `REDIS_URL` — Lokale Docker Redis URL
-
-- [ ] **INFRA-004** — Erster `npm run dev` erfolgreich
-  - Server startet ohne Fehler
-  - `GET http://localhost:3000/health` → `{ status: 'ok' }`
-  - Web Client startet: `http://localhost:5173`
-  - WebSocket Verbindung aufbauen (nach Login)
-
-- [ ] **INFRA-005** — `infra/scripts/dev-seed.js` erstellen
-  - Test-User anlegen: `test@origo.app` / `password123`
-  - 3 Test-Fraktionen anlegen mit verschiedenen Patterns
-  - GHIFR-Guthaben: 1000 pro Test-Fraktion
-  - Aufruf: `node infra/scripts/dev-seed.js`
-
-### 3.2 — Testing
-
-- [ ] **TEST-001** — Conway Engine Unit Tests (`server/src/engine/conway.test.js`)
-  - Determinismus-Test: Gleicher Seed → Gleicher Output nach 100 Ticks
-  - Bekannte Patterns: Glider überlebt 4 Ticks, korrekte Position
-  - Torus-Wraparound: Zellen am Rand erscheinen gegenüber
-  - Custom Rules: Fraktion mit Regel 4 überlebt bei 4 Nachbarn
-  - Performance: 100×100 Grid, 1000 Ticks in < 1 Sekunde
-
-- [ ] **TEST-002** — API Integration Tests
-  - `POST /api/auth/register` → 201, JWT zurück
-  - `POST /api/auth/login` → 200, JWT zurück
-  - `POST /api/faction/create` → Fraktion in DB, Grid-Zellen gesetzt
-  - `GET  /api/ghifr/balance` → korrekte Summe aus Ledger
-  - `POST /api/voucher/issue` → signierter Voucher, GHIFR deduktiert
-
-- [ ] **TEST-003** — WebSocket Integration Test
-  - Client verbindet → Snapshot empfangen
-  - Tick läuft → Delta empfangen, Grid korrekt gepatcht
-  - Client trennt → reconnect → neuer Snapshot korrekt
-
-- [ ] **TEST-004** — GHIFR Pool Mathematik
-  - 3 Fraktionen, unterschiedliche Zellanzahl
-  - Pool-Verteilung korrekt proportional
-  - Nullsumme: Ausgezahltes <= Pool-Balance
-
----
-
-## 🟢 PHASE 2 — RUST ENGINE
-
-- [ ] **RUST-001** — Rust Workspace Setup (`engine/Cargo.toml`)
-- [ ] **RUST-002** — `engine/src/lib.rs` — Public API definieren
-- [ ] **RUST-003** — `engine/src/grid.rs` — Flat Uint8Array Grid
-- [ ] **RUST-004** — `engine/src/conway.rs` — B3/S23 + Custom Rules
-- [ ] **RUST-005** — `engine/src/sector.rs` — Sektor-Sleep/Wake + Buffer
-- [ ] **RUST-006** — `engine/src/hashlife.rs` — Lazy Evaluation
-- [ ] **RUST-007** — `engine/src/pattern.rs` — Pattern-Erkennung (Bitmask)
-- [ ] **RUST-008** — WASM Build: `wasm-pack build --target web`
-- [ ] **RUST-009** — Node.js Bridge: `server/src/engine/bridge.js` (FFI via napi-rs)
-- [ ] **RUST-010** — JS Engine durch Rust Engine ersetzen (drop-in)
-- [ ] **RUST-011** — Benchmark: 1000×1000 Grid, 10 Ticks/sec auf Hetzner CX21
-- [ ] **RUST-012** — WASM für Client-seitige Preview (Onboarding 5-Gen-Vorschau)
-
----
-
-## 🟢 PHASE 2 — REACT NATIVE MOBILE APP
-
-- [ ] **MOBILE-001** — `packages/mobile/` Ordner anlegen
-- [ ] **MOBILE-002** — `packages/mobile/package.json` — Expo + React Native
-- [ ] **MOBILE-003** — Expo Setup: `npx create-expo-app`
-- [ ] **MOBILE-004** — `@origo/core` als Dependency einbinden
-- [ ] **MOBILE-005** — `@origo/renderer` für React Native anpassen (expo-gl)
-- [ ] **MOBILE-006** — Three.js via `expo-three` und `expo-gl`
-- [ ] **MOBILE-007** — Alle Screens aus Web nach Mobile portieren
-- [ ] **MOBILE-008** — Touch-Gesten: Pinch-Zoom, Swipe-Rotation (react-native-gesture-handler)
-- [ ] **MOBILE-009** — Push Notifications: Extinction Events, Layer-Aufstieg (Expo Notifications)
-- [ ] **MOBILE-010** — iOS Build: `eas build --platform ios`
-- [ ] **MOBILE-011** — Android Build: `eas build --platform android`
-- [ ] **MOBILE-012** — App Store Submission (iOS)
-- [ ] **MOBILE-013** — Google Play Submission (Android)
+- [ ] **RUST-001** `engine/Cargo.toml` — Workspace Setup
+- [ ] **RUST-002** `engine/src/lib.rs` — Public API
+- [ ] **RUST-003** `engine/src/grid.rs` — Flat Uint8Array Grid
+- [ ] **RUST-004** `engine/src/conway.rs` — B3/S23 + Custom Rules per Fraktion
+- [ ] **RUST-005** `engine/src/sector.rs` — Sektor-Sleep/Wake + Buffer
+- [ ] **RUST-006** `engine/src/hashlife.rs` — Lazy Evaluation / Quad-Tree
+- [ ] **RUST-007** `engine/src/pattern.rs` — Bitmask Pattern-Erkennung
+- [ ] **RUST-008** `engine/src/lenia.rs` — **Lenia Prerequisite**
+  - 2D FFT Convolution via `rustfft` Crate
+  - Growth Function G als Gaussian Bell Curve (konfigurierbares mu, sigma)
+  - Grid-State: `Vec<f32>` W×H, double-buffered
+  - `tick()` via FFI (napi-rs)
+  - `stamp_inject(x, y, kernel: &[f32], width: usize)` für Spieler-Interaktion
+  - Delta-Encoder: nur Zellen wo `|new - old| > EPSILON (0.001)`
+  - f32 (nicht f64) — halbe Memory-Bandwidth, ausreichende Präzision
+- [ ] **RUST-009** WASM Build: `wasm-pack build --target web` (für Onboarding-Preview)
+- [ ] **RUST-010** napi-rs Bridge: `server/src/engine/bridge.js`
+- [ ] **RUST-011** JS Engine durch Rust Engine ersetzen (drop-in Interface)
+- [ ] **RUST-012** Benchmark: 1000×1000 Conway + 512×512 Lenia gleichzeitig auf CX21
 
 ---
 
 ## 🟢 PHASE 2 — HETZNER DEPLOYMENT
 
-- [ ] **DEPLOY-001** — Hetzner CX21 VPS bestellen (6 Euro/Monat, Standort: Nürnberg)
-- [ ] **DEPLOY-002** — SSH Key hinterlegen, Root-Login deaktivieren
-- [ ] **DEPLOY-003** — Ubuntu 24.04 LTS, Docker + Docker Compose installieren
-- [ ] **DEPLOY-004** — Nginx installieren + konfigurieren (`infra/nginx.conf`)
-  - Reverse Proxy: Port 80/443 → Server Port 3000
-  - WebSocket Proxy: `proxy_http_version 1.1`, `Upgrade`, `Connection`
-  - Static Files: Web Client Dist servieren
-- [ ] **DEPLOY-005** — SSL via Let's Encrypt: `certbot --nginx -d origo.app`
-- [ ] **DEPLOY-006** — Domain konfigurieren: `origo.app` → Hetzner IP
-- [ ] **DEPLOY-007** — Production `.env` auf Server hinterlegen (sicher, nicht in Git)
-- [ ] **DEPLOY-008** — `infra/scripts/deploy.sh` testen: `git pull && docker-compose up -d --build`
-- [ ] **DEPLOY-009** — `infra/scripts/backup.sh` als Cron: täglich 03:00 UTC
-  - Postgres Dump → `/mnt/backup/origo/`
-  - Redis Dump → `/mnt/backup/origo/`
-- [ ] **DEPLOY-010** — Monitoring: Uptime Kuma installieren
-  - Health Check: `GET https://origo.app/health` alle 60s
-  - Alert bei Ausfall: Telegram oder Email
-- [ ] **DEPLOY-011** — GitHub Actions CI/CD (`.github/workflows/deploy.yml`)
-  - Trigger: Push auf `main`
-  - Steps: npm test → SSH deploy → health check
-- [ ] **DEPLOY-012** — Erster Production Deploy + Smoke Test
+- [ ] **DEPLOY-001** Hetzner CX22 (€4.35/Monat) — Phase 1 ausreichend
+- [ ] **DEPLOY-002** SSH Key, Root-Login deaktivieren, Ubuntu 24.04
+- [ ] **DEPLOY-003** Docker + Docker Compose + Node.js 20 installieren
+- [ ] **DEPLOY-004** Nginx Reverse Proxy + WebSocket Proxy konfigurieren
+- [ ] **DEPLOY-005** SSL via Let's Encrypt: `certbot --nginx -d origo.app`
+- [ ] **DEPLOY-006** Domain `origo.app` → Hetzner IP
+- [ ] **DEPLOY-007** Production `.env` sicher hinterlegen (nicht in Git)
+- [ ] **DEPLOY-008** `infra/scripts/deploy.sh` testen
+- [ ] **DEPLOY-009** `infra/scripts/backup.sh` als Cron täglich 03:00 UTC
+- [ ] **DEPLOY-010** Monitoring: Uptime Kuma, Health-Check alle 60s
+- [ ] **DEPLOY-011** GitHub Actions CI/CD: push main → test → deploy → health-check
+- [ ] **DEPLOY-012** Phase 3 Upgrade: Hetzner CCX13 (€17/Monat, dedicated AMD vCPU)
+  - Rust Engine + Lenia 512×512 FFT (~5ms/tick) — problemlos
+
+---
+
+## 🟢 PHASE 2 — REACT NATIVE MOBILE
+
+- [ ] **MOBILE-001** `packages/mobile/` — Expo + React Native Setup
+- [ ] **MOBILE-002** `@origo/core` + `@origo/renderer` als Dependencies
+- [ ] **MOBILE-003** Three.js via `expo-three` + `expo-gl`
+- [ ] **MOBILE-004** `LeniaRenderPass` für Mobile anpassen (expo-gl Kontext)
+- [ ] **MOBILE-005** Touch-Gesten: Pinch-Zoom, Swipe (react-native-gesture-handler)
+- [ ] **MOBILE-006** Push Notifications: Extinction Events, Layer-Aufstieg
+- [ ] **MOBILE-007** Alle Screens portieren
+- [ ] **MOBILE-008** iOS Build: `eas build --platform ios`
+- [ ] **MOBILE-009** Android Build: `eas build --platform android`
+- [ ] **MOBILE-010** App Store + Google Play Submission
+
+---
+
+## 🔵 PHASE 3 — LENIA LAYER (nach Rust Engine)
+
+> ⚠️ Alle LENIA-P3 Tasks ERST nach RUST-008 starten.
+
+### LENIA-P3 — Server
+- [ ] **LENIA-P3-A** `server/src/jobs/lenia_tick.js`
+  - Ruft Rust `lenia.tick()` via napi-rs auf
+  - Berechnet Delta (Epsilon 0.001), zlib-komprimiert
+  - Broadcast `lenia_delta` WS Message an Layer-3+ Subscriber
+  - Tick-Interval: 3000ms (konfig in `.env`)
+
+- [ ] **LENIA-P3-B** `server/src/api/lenia.js`
+  - `POST /api/lenia/stamp` — Spieler-Interaktion: Kernel-Stamp auf Grid
+    - Input: `{ x, y, kernelId }` — kernelId aus vordefinierter Palette
+    - Server appliziert Stamp auf kanonisches Grid vor nächstem Tick
+    - DB: lenia_stamps INSERT
+    - Attribution: letzte Stamp-Interaktion im 30-Tick-Fenster = GHIFR credit
+  - `GET  /api/lenia/creatures` — Bekannte Lenia-Kreaturen aus Katalog
+  - `GET  /api/lenia/sightings` — Aktuelle Kreaturen auf Layer 3+
+
+- [ ] **LENIA-P3-C** WebSocket Broker erweitern
+  - `lenia_delta` Message Type hinzufügen
+  - `lenia_stamp` Message Type empfangen + an `lenia.js` API weiterleiten
+  - Subscription-Filter: `lenia_delta` nur an Layer-3+ Clients
+
+- [ ] **LENIA-P3-D** `server/src/jobs/lenia_detect.js` — Background Detection
+  - Gradient-Magnitude-Scan alle 10 Ticks
+  - Connected Components → Creature-Kandidaten
+  - Feature-Vektor: Zentroid, Bounding Box, Mean, Variance, Velocity
+  - Cosine-Similarity gegen Katalog (Threshold 0.92 = Match)
+  - Novel-Kandidat bei < 0.85 nach 50 stabilen Ticks → Community-Vote
+
+### LENIA-P3 — Datenbank
+- [ ] **LENIA-P3-E** Migration 002 ausführen: `lenia_creatures`, `lenia_stamps`, `lenia_sightings`
+- [ ] **LENIA-P3-F** `db/seeds/lenia_catalog.js` — Chan's canonical Lenia catalog importieren
+  - Quelle: lenia.world / arXiv:2005.03742 Appendix
+  - Empfehlung: 20 stabilste Solitons als Startbestand
+  - Redis Cache: Creature-Kernels als Float32-Arrays für schnelle Matching
+
+### LENIA-P3 — Client
+- [ ] **LENIA-P3-G** `LeniaRenderPass.js` für Phase 3 erweitern
+  - `applyLeniaDelta(deltaPatches)` — Float32-Patches aus WS-Stream anwenden
+  - Render-Buffer: lokal (read-only für Game-Logic), kein lokales Simulieren
+  - Creature-Detection visuell: leuchtender Outline um erkannte Kreaturen
+
+- [ ] **LENIA-P3-H** Layer-3+ UI
+  - Stamp-Picker: vordefinierte Kernel-Palette (8–12 Stamps)
+  - Creature-Tooltip beim Hover: Name, Typ, Velocity, GHIFR-Rate
+  - "ALIEN TIME" Tick-Indikator (3s statt 1s)
+
+- [ ] **LENIA-P3-I** Community-Naming für Lenia-Kreaturen
+  - Bestehender Quadratic-Voting-Flow wiederverwendet — keine Änderungen nötig
+  - Nur: Pattern-Typ in Voting-Komponente auf `lenia_creature` setzen
+
+### LENIA-P3 — GHIFR Economy
+- [ ] **LENIA-P3-J** `pool.js` für Layer 3+ adaptieren
+  - Earning via Creature-Sighting (nicht Zellanzahl)
+  - Multiplier: still=1×, oscillator=1.5×, spaceship=2×, novel=5× (one-time)
+  - Attribution: letzte Stamp-Interaktion im 30-Tick-Fenster
+  - Kein Transfer zwischen Layer-3-Pool und Layer-0/1/2-Pools
+
+### LENIA-P3 — Infrastruktur
+- [ ] **LENIA-P3-K** Hetzner CCX13 upgraden (€17/Monat) — dedicated CPU für FFT
+- [ ] **LENIA-P3-L** Lenia-Tick-Rate über `.env` konfigurierbar: `LENIA_TICK_MS=3000`
+- [ ] **LENIA-P3-M** Benchmark: 512×512 Lenia + 2048×2048 Conway parallel auf CCX13
 
 ---
 
 ## 🔵 PHASE 3 — IFR TOKEN INTEGRATION
 
-- [ ] **IFR-001** — `GameClaimPool.sol` von Inferno Dev Team anfordern (DevSpec übergeben)
-- [ ] **IFR-002** — Contract auf Sepolia Testnet deployen + testen
-- [ ] **IFR-003** — `GAME_CLAIM_POOL_ADDRESS` in `.env` eintragen (Testnet)
-- [ ] **IFR-004** — End-to-End Voucher-Flow testen:
-  - Spieler earned GHIFR → Voucher anfordern → auf ifrunit.tech einlösen → IFR erhalten
-- [ ] **IFR-005** — 45% Revenue Buyback Mechanismus implementieren
-  - Zahlungseingang erkennen (Stripe oder Crypto-Payment)
-  - 45% automatisch in IFR-Kauf investieren
-  - `deposit()` auf GameClaimPool aufrufen
-- [ ] **IFR-006** — IFR-001 bis IFR-005 auf Mainnet wiederholen
-- [ ] **IFR-007** — Als Builder bei Inferno registrieren (GitHub Issue)
-- [ ] **IFR-008** — PartnerVault Integration (Creator Rewards)
-- [ ] **IFR-009** — IFRLock Premium Features (optional Layer-Boost für IFR-Locker)
+- [ ] **IFR-001** GameClaimPool.sol — Inferno Dev Team Übergabe (DevSpec bereits erstellt)
+- [ ] **IFR-002** Contract auf Sepolia Testnet deployen
+- [ ] **IFR-003** End-to-End Voucher Flow testen (GHIFR → Voucher → ifrunit.tech → IFR)
+- [ ] **IFR-004** 45% Revenue Buyback — `deposit()` auf GameClaimPool
+- [ ] **IFR-005** Mainnet Deploy
+- [ ] **IFR-006** Builder-Registrierung Inferno (GitHub Issue)
+- [ ] **IFR-007** PartnerVault Integration (Creator Rewards)
+- [ ] **IFR-008** Optional: IFRLock Premium Features (Layer-Boost für IFR-Locker)
 
 ---
 
-## 🔵 PHASE 3 — GAME FEATURES ERWEITERN
+## 🔵 PHASE 3 — WEITERE GAME FEATURES
 
-- [ ] **GAME-001** — Saisonale Regelverschiebung implementieren
-  - Cron: 1x monatlich, 48h Dauer
-  - B3/S23 → B36/S23 (oder ähnlich)
-  - Alle Clients per WebSocket informieren
-  - In `constants.js` konfigurierbar
-
-- [ ] **GAME-002** — Allianzen-System
-  - Keine direkte Kommunikation zwischen Spielern
-  - Zell-Platzierung nahe anderer Fraktion: Allianz-Badge
-  - Statistik: "Du hast X Generationen neben [Fraktion] überlebt"
-
-- [ ] **GAME-003** — Mehrere Planeten (Layer 2+)
-  - Planet-Definitionen in `constants.js`: Mars, Alien-Welt, etc.
-  - Prozedurale Texturen via `ProcGen.js`
-  - Navigation im Makro-Zoom: Klick auf anderen Planeten
-  - Eigene Conway-Welt pro Planet (separates Grid)
-
-- [ ] **GAME-004** — Spectator Mode
-  - `GET /api/spectator/token` — Token ohne Fraktion (kein €1 nötig)
-  - WebSocket-Verbindung: Nur SNAPSHOT + DELTA empfangen, kein Senden
-  - Web Client: Spectator-Modus (kein Faction HUD, kein Zell-Platzieren)
-  - Conversion: "Deine eigene Fraktion für €1 starten" CTA
-
-- [ ] **GAME-005** — Transparenz-Dashboard
-  - `GET /api/stats/pool` — Aktueller GHIFR-Pool
-  - `GET /api/stats/rate` — Aktuelle Rate GHIFR/Tick
-  - `GET /api/stats/players` — Aktive Spieler
-  - Web: Öffentliche Stats-Seite (kein Login nötig)
+- [ ] **GAME-001** Saisonale Regelverschiebung (1×/Monat, 48h, B36/S23)
+- [ ] **GAME-002** Allianzen-Statistik (Nachbarschafts-Tracking)
+- [ ] **GAME-003** Mehrere Planeten (Layer 2+ prozedurale Texturen via ProcGen.js)
+- [ ] **GAME-004** Spectator Mode (Token ohne Fraktion, WS read-only)
+- [ ] **GAME-005** Transparenz-Dashboard (Pool, Rate, Spieler, öffentlich)
 
 ---
 
 ## 📋 COMMIT-KONVENTIONEN
-
 ```
-feat: neues Feature
-fix: Bug behoben
-chore: Infrastruktur/Config
-test: Tests hinzugefügt
-docs: Dokumentation
+feat:     neues Feature
+fix:      Bug behoben
+chore:    Infrastruktur/Config
+test:     Tests hinzugefügt
+docs:     Dokumentation
 refactor: Code umstrukturiert
-perf: Performance-Verbesserung
-```
-
-Beispiele:
-```
-fix: add missing server modules (BUG-001)
-feat: implement GHIFR pool distribution
-feat: add Three.js fossil alpha decay
-chore: configure nginx reverse proxy
-test: add Conway engine determinism tests
+perf:     Performance
+lenia:    Lenia-spezifische Änderungen
 ```
 
 ---
 
 ## 🚦 PRIORITÄTS-REIHENFOLGE FÜR CLAUDE CODE
 
-**Sofort (Server startet nicht):**
-1. BUG-001-A bis BUG-001-F (6 fehlende Module)
-2. BUG-002-A bis BUG-002-E (renderer package)
-3. BUG-003-A bis BUG-003-C (NASA Textur)
+**Sofort — Server startet nicht:**
+1. BUG-001-A bis BUG-001-F
+2. BUG-002-A bis BUG-002-F
+3. BUG-003-A bis BUG-003-C
 
-**Danach (Phase 1 abschließen):**
-4. SERVER-001 bis SERVER-004 (Middleware)
-5. INFRA-001 bis INFRA-004 (lokale Dev-Env läuft)
-6. TEST-001 (Conway determinism sicherstellen)
-7. WEB-001 bis WEB-004 (alle Screens)
-8. INFRA-005 (Dev Seed)
-9. TEST-002 bis TEST-004
-10. SERVER-005 bis SERVER-008
-11. ENGINE-001 bis ENGINE-004
-12. WEB-005 bis WEB-014
+**Phase 1 — Lauffähige Dev-Env:**
+4. LENIA-P1-F, LENIA-P1-G (Lenia im Browser testen)
+5. SERVER-001 bis SERVER-004 (Middleware)
+6. INFRA-001 bis INFRA-004 (Docker, Migrations, npm run dev)
+7. TEST-001, TEST-005 (Conway + Lenia Pass)
+8. WEB-001 bis WEB-004 (Screens)
+9. INFRA-005 (Dev Seed)
+10. TEST-002 bis TEST-004
+11. SERVER-005 bis SERVER-008
+12. ENGINE-001 bis ENGINE-004
+13. WEB-005 bis WEB-014
 
-**Phase 2:**
-13. RUST-001 bis RUST-012
-14. DEPLOY-001 bis DEPLOY-012
-15. MOBILE-001 bis MOBILE-013
+**Phase 2 (Rust Engine — Pflicht vor Lenia P3):**
+14. RUST-001 bis RUST-008 (Lenia Engine in Rust)
+15. RUST-009 bis RUST-012
+16. DEPLOY-001 bis DEPLOY-011
 
-**Phase 3:**
-16. IFR-001 bis IFR-009
-17. GAME-001 bis GAME-005
+**Phase 3 (Lenia Layer — nur nach RUST-008):**
+17. LENIA-P3-A bis LENIA-P3-M (in dieser Reihenfolge)
+18. IFR-001 bis IFR-008
+19. GAME-001 bis GAME-005
 
 ---
 
-*ORIGO TODO v1.0 — Vendetta Labs 2026*  
-*Letzte Aktualisierung: Genesis Commit gepusht, 3 kritische Bugs offen*
+*ORIGO TODO v1.1 — Lenia Integration · Vendetta Labs 2026*  
+*Lenia Spec: ORIGO_Lenia_Integration_Spec.docx · Conway Spec: ORIGO_Konzept_v2.pdf*

@@ -51,3 +51,33 @@ export const WS = {
   PING:     'ping',
   PONG:     'pong',
 };
+
+// ── Lenia constants ───────────────────────────────────────────────────────────
+
+// Phase 1 — render pass only
+export const LENIA_KERNEL_RADIUS  = 3;     // Gaussian R for shader
+export const LENIA_SIGMA          = 1.2;   // Gaussian sigma
+
+// Phase 3 — true Lenia layer (Layer 3+)
+export const LENIA_LAYER_MINIMUM  = 3;     // first layer using Lenia rules
+export const LENIA_GRID_W         = 512;   // Lenia grid width  (float32)
+export const LENIA_GRID_H         = 512;   // Lenia grid height (float32)
+export const LENIA_TICK_MS        = 3000;  // 3s tick (vs 1s Conway)
+export const LENIA_DELTA_EPSILON  = 0.001; // min change to include in delta
+export const LENIA_CREATURE_SIM_THRESHOLD = 0.92; // cosine sim for known match
+export const LENIA_NOVEL_THRESHOLD        = 0.85; // below this = candidate
+export const LENIA_STABLE_TICKS           = 50;   // ticks for novel confirmation
+
+// Lenia WS message types (extend existing WS object)
+export const WS_LENIA = {
+  DELTA: 'lenia_delta',   // server → Layer3+ clients
+  STAMP: 'lenia_stamp',   // client → server (player interaction)
+};
+
+// GHIFR earning multipliers for Lenia creatures (vs Conway base rate)
+export const LENIA_EARN = {
+  still:     1.0,  // velocity < 0.5 cells/tick for 10+ ticks
+  oscillator:1.5,  // periodic state variance, stable centroid
+  spaceship:  2.0, // velocity > 1.0 cells/tick, form maintained 20+ ticks
+  novel:      5.0, // community-confirmed novel creature (one-time)
+};
