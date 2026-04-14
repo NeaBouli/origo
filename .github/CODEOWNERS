@@ -1,0 +1,11 @@
+# ORIGO — Code Ownership
+# All changes require review from repo owner
+
+* @NeaBouli
+
+# Critical paths — extra protection
+/server/src/api/     @NeaBouli
+/server/src/engine/  @NeaBouli
+/infra/              @NeaBouli
+/docs/               @NeaBouli
+/.github/            @NeaBouli
