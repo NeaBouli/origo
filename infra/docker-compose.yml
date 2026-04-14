@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_DB:       origo
       POSTGRES_USER:     origo
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-origo_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD env var}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -38,7 +38,7 @@ services:
     restart: unless-stopped
     env_file: ../server/.env
     environment:
-      POSTGRES_URL: postgresql://origo:${POSTGRES_PASSWORD:-origo_dev}@postgres:5432/origo
+      POSTGRES_URL: postgresql://origo:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD env var}@postgres:5432/origo
       REDIS_URL:    redis://redis:6379
     ports:
       - "3000:3000"

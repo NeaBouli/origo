@@ -6,7 +6,10 @@ import { db } from '../db/client.js';
 
 export const authRouter = Router();
 
-const JWT_SECRET = () => process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = () => {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET env var is required');
+  return process.env.JWT_SECRET;
+};
 const JWT_EXPIRY = '30d';
 const SALT_ROUNDS = 10;
 

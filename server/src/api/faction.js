@@ -9,7 +9,10 @@ import { PATTERNS } from '../engine/conway.js';
 
 export const factionRouter = Router();
 
-const JWT_SECRET = () => process.env.JWT_SECRET || 'dev-secret-change-me';
+const JWT_SECRET = () => {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET env var is required');
+  return process.env.JWT_SECRET;
+};
 
 // POST /api/faction/create
 factionRouter.post('/create', authenticateJWT, async (req, res) => {
