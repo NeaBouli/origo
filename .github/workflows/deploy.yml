@@ -21,6 +21,7 @@ jobs:
           npm test
 
       - name: Deploy via SSH
+        if: ${{ secrets.HETZNER_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
           host:     ${{ secrets.HETZNER_HOST }}
@@ -29,6 +30,7 @@ jobs:
           script:   /opt/origo/infra/scripts/deploy.sh
 
       - name: Health check
+        if: ${{ secrets.HETZNER_HOST != '' }}
         run: |
           sleep 5
           curl -f https://origo.app/health
