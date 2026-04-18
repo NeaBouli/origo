@@ -4,8 +4,11 @@ on:
   push:
     branches: [main]
 
+env:
+  HAS_DEPLOY_SECRETS: ${{ secrets.HETZNER_HOST != '' }}
+
 jobs:
-  deploy:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +23,12 @@ jobs:
           npm ci
           npm test
 
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    steps:
       - name: Deploy via SSH
-        if: ${{ secrets.HETZNER_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
           host:     ${{ secrets.HETZNER_HOST }}
@@ -30,7 +37,6 @@ jobs:
           script:   /opt/origo/infra/scripts/deploy.sh
 
       - name: Health check
-        if: ${{ secrets.HETZNER_HOST != '' }}
         run: |
           sleep 5
           curl -f https://origo.app/health
