@@ -17,8 +17,8 @@ jobs:
 
       - name: Install and test
         run: |
-          npm install
-          npm test --if-present
+          npm ci
+          npm test
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
